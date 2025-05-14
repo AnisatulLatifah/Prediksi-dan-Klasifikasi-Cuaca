@@ -1,0 +1,142 @@
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background-image: url("images/background2.jpg");
+    text-align: center;
+  }
+  
+  .header-bar {
+    background-color: rgba(29, 75, 23, 0.5);
+    height: 30px;
+    width: 100%;
+    position: relative;
+  }
+  
+  .menu-icon {
+    height: 22px;
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+  }
+  
+  .logo-container {
+    padding-top: 10px;
+    padding-left: 20px;
+    text-align: left;
+  }
+  
+  .logo {
+    height: 50px;
+  }
+  
+  /* Sidebar */
+  .sidebar {
+    position: fixed;
+    top: 30px;
+    right: -250px;
+    width: 220px;
+    height: 100%;
+    background-color: #eafde7;
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+    transition: right 0.4s ease;
+    padding-top: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding-left: 20px;
+    z-index: 1000;
+  }
+  
+  .sidebar.active {
+    right: 0;
+  }
+  
+  .sidebar a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 5px;
+    text-decoration: none;
+    color: #052F14;
+    font-weight: bold;
+    font-size: 1rem;
+    border-bottom: 1px solid #b4cdb0; 
+  }
+  
+  
+  .sidebar a:hover {
+    background-color: #d5f4d0;
+    border-bottom: 1px solid #b4cdb0; 
+  }  
+  
+  .icon-menu {
+    width: 24px;
+    height: 24px;
+  }
+
+  .judul {
+    margin-top: 40px;
+    margin-bottom: 140px;
+  }
+  
+  .judul h1 {
+    font-size: 2.5rem;
+    color: #a5dbad;
+    margin: 30px;
+  }
+  
+  /* Kotak tombol + garis */
+  .download-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    margin-top: 30px;
+  }
+  
+  .box-line {
+    width: 60%;
+    border: none;
+    height: 2px;
+    background-color: #2E7D32;
+  }
+  
+  
+  /* Tombol */
+  .download-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 40px;
+  }
+  
+  .btn {
+    padding: 12px 30px;
+    font-size: 1.2rem;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: transform 0.2s ease;
+  }
+  
+  .btn:hover {
+    transform: scale(1.05);
+  }
+  
+  .btn.pdf {
+    background-color: #f44336;
+  }
+  
+  .btn.xls {
+    background-color: #4caf50;
+  }
+  
+  .atau {
+    font-size: 1rem;
+    color: #444;
+  }
+  

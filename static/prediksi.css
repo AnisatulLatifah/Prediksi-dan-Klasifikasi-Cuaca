@@ -1,0 +1,296 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: url("images/background2.jpg") center/cover no-repeat fixed;
+  color: #222;
+}
+
+/* ===== HEADER & NAVIGATION ===== */
+.header-bar {
+  background-color: rgba(29, 75, 23, 0.5);
+  width: 100%;
+  height: 30px;
+  position: relative;
+}
+
+.menu-icon {
+  height: 24px;
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.sidebar {
+  position: fixed;
+  top: 30px;
+  right: -250px;
+  width: 220px;
+  height: 100%;
+  background-color: #eafde7;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+  transition: right 0.4s ease;
+  padding: 30px 0 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  z-index: 1000;
+}
+
+.sidebar.active {
+  right: 0;
+}
+
+.sidebar a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 5px;
+  text-decoration: none;
+  color: #052F14;
+  font-weight: bold;
+  border-bottom: 1px solid #b4cdb0;
+  transition: background-color 0.3s;
+}
+
+.sidebar a:hover {
+  background-color: #d5f4d0;
+}
+
+.icon-menu {
+  width: 24px;
+  height: 24px;
+}
+
+.logo-container {
+  padding: 20px;
+}
+
+.logo {
+  height: 50px;
+}
+
+.judul {
+  text-align: center;
+  margin-bottom: 30px;
+  color: #cdface;
+}
+
+.judul h1 {
+  font-size: 2.2rem;
+  font-weight: bold;
+}
+
+.judul h2 {
+  font-size: 1rem;
+  margin-top: 10px;
+  color: #555;
+}
+
+.list-prediksi {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 20px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.baris-prediksi {
+  background-color: rgba(213, 244, 208, 0.8);
+  border-radius: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  padding: 20px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.baris-prediksi:hover {
+
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1); 
+}
+
+.hari-tanggal {
+  flex: 1 1 150px;
+  min-width: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  padding: 10px;
+}
+
+.hari-tanggal h2 {
+  font-size: 1.4rem;
+  margin-bottom: 4px;
+  color: #1a4b16;
+  text-align: center;
+}
+
+.hari-tanggal p {
+  font-size: 0.9rem;
+  color: #444;
+  text-align: center;
+}
+
+/* Weather Status */
+.status-cuaca {
+  flex: 2 1 320px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.card-status {
+  background-color: #E4F5E6;
+  padding: 20px 30px;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.card-status img.status-img {
+  width: 60px;
+  margin-bottom: 8px;
+}
+
+.klasifikasi-title {
+  font-size: 1.2rem;
+  color: #2e7d32;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+/* Bad Weather State */
+.buruk .klasifikasi-title {
+  color: #d32f2f;
+}
+
+.toggle-icon {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: transform 0.3s;
+}
+
+.toggle-icon.active {
+  transform: rotate(180deg);
+}
+
+/* Weather Details */
+.keterangan-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px auto 0;
+  text-align: center;
+  display: none;
+  width: 100%;
+}
+
+.keterangan-list.active {
+  display: block;
+}
+
+.keterangan-list li {
+  font-size: 0.9rem;
+  padding: 8px 0;
+  color: #333;
+  border-bottom: 1px solid #d1e8d1;
+}
+
+.keterangan-list li:last-child {
+  border-bottom: none;
+}
+
+/* Weather Data */
+.data-cuaca {
+  flex: 3 1 300px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.data-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+  text-align: center;
+}
+
+.data-item img {
+  width: 28px;
+  margin-bottom: 5px;
+}
+
+.data-item h4 {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #1a4b16;
+}
+
+.data-item span {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+  .baris-prediksi {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 15px;
+  }
+
+  .hari-tanggal {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+  }
+
+  .hari-tanggal,
+  .status-cuaca,
+  .data-cuaca {
+    width: 100%;
+  }
+
+  .card-status {
+    width: 100%;
+    padding: 15px;
+  }
+
+  .data-cuaca {
+    justify-content: space-around;
+  }
+}
+
+@media (max-width: 480px) {
+  .judul h1 {
+    font-size: 1.6rem;
+  }
+  
+  .data-item {
+    min-width: 70px;
+  }
+}

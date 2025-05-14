@@ -1,0 +1,295 @@
+/* RESET & BODY */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  padding-top: 30px; /* ✅ Tinggi sama dengan .header-bar */
+  font-family: 'Segoe UI', sans-serif;
+  background-image: url("images/background2.jpg");
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  color: #052F14;
+}
+
+/* PITA HIJAU ATAS */
+.header-bar {
+  background-color: rgba(29, 75, 23, 0.5);
+  width: 100%;
+  height: 30px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+}
+
+/* ICON MENU */
+.menu-icon {
+  height: 24px;
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+/* LOGO + BUTTON CSV BAR */
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  margin-top: -20px; 
+}
+
+/* LOGO KIRI */
+.logo-left {
+  display: flex;
+  align-items: center;
+}
+
+.logo-left .logo {
+  height: 50px;
+}
+
+/* UPLOAD KANAN */
+.upload-section {
+  display: flex;
+  margin-top: 2px;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.btn-upload {
+  background-color: #4CBB17;
+  color: white;
+  padding: 6px 16px;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 0.9rem;
+  border-radius: 5px;
+  margin-bottom: 2px;
+}
+
+.link-download {
+  font-size: 0.7rem;
+  color: #333;
+  text-decoration: underline;
+  line-height: 1;
+}
+
+/* CONTENT UTAMA */
+.content-container {
+  margin-top: 30px;
+  text-align: center;
+}
+
+.judul {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 100px;
+  color: #c0edd0;
+}
+
+/* FORM & INPUT */
+.form-wrapper {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.form-header,
+.input-wrapper {
+  background-color: #d5f4d0;
+  padding: 20px 20px;
+  border-radius: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr 0.8fr;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.form-header {
+  font-weight: bold;
+  text-align: center;
+  border-radius: 16px 16px 0 0;
+}
+
+.input-row {
+  display: contents;
+}
+
+.input-row input {
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background-color: #eafde7;
+  font-size: 0.9rem;
+  width: 100%;
+}
+
+input::placeholder {
+  font-style: italic;
+  color: #bababa;
+}
+
+/* TOMBOL HAPUS & TAMBAH */
+.hapus-button,
+.tambah-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.hapus-button img,
+.tambah-button img {
+  width: 24px;
+  height: 24px;
+}
+
+.tombol-bar {
+  margin-top: 10px;
+  text-align: right;
+}
+
+/* TOMBOL SUBMIT */
+.submit-button {
+  background-color: #4CBB17;
+  color: white;
+  padding: 12px 24px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 30px;
+  font-weight: bold;
+  cursor: pointer;
+  display: block;
+  margin: 30px auto 0;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.action-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+/* SIDEBAR */
+.sidebar {
+  position: fixed;
+  top: 30px;
+  right: -250px;
+  width: 220px;
+  height: 100%;
+  background-color: #eafde7;
+  box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+  transition: right 0.4s ease;
+  padding-top: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-left: 20px;
+  z-index: 1000;
+}
+
+.sidebar.active {
+  right: 0;
+}
+
+.sidebar a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 5px;
+  text-decoration: none;
+  color: #052F14;
+  font-weight: bold;
+  font-size: 1rem;
+  border-bottom: 1px solid #b4cdb0;
+}
+
+.sidebar a:hover {
+  background-color: #d5f4d0;
+  border-bottom: 1px solid #b4cdb0;
+}
+
+.icon-menu {
+  width: 24px;
+  height: 24px;
+}
+
+/* INPUT TANGGAL */
+input[type="date"] {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .form-header,
+  .input-wrapper {
+    grid-template-columns: repeat(2, 1fr);
+    text-align: left;
+    padding: 15px;
+  }
+
+  .form-wrapper {
+    padding: 0 15px;
+  }
+
+  .submit-button {
+    width: 100%;
+  }
+}
+
+.flash-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  position: relative;
+  z-index: 10;
+}
+
+.alert {
+  max-width: 400px;
+  width: 90%;
+  padding: 12px 20px;
+  margin: auto;
+  color: #fff;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 14px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.alert.success {
+  background-color: #28a745;
+}
+
+.alert.danger {
+  background-color: #dc3545;
+}
+
+.alert.warning {
+  background-color: #ffc107;
+  color: #333;
+}
+
+.alert .close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  margin-left: 10px;
+}

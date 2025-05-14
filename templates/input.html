@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Input Data Cuaca</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='input.css') }}">
+</head>
+
+<body>
+
+<!-- Pita Header -->
+<div class="header-bar">
+  <img src="{{ url_for('static', filename='images/icon_garis tiga.png') }}" class="menu-icon" onclick="toggleMenu()" alt="Menu">
+</div>
+
+<!-- Sidebar Menu -->
+<div id="sidebar" class="sidebar">
+  <a href="{{ url_for('home') }}">
+    <img src="{{ url_for('static', filename='images/icon_home.png') }}" class="icon-menu"> Home
+  </a>
+  <a href="{{ url_for('input') }}">
+    <img src="{{ url_for('static', filename='images/icon_input.png') }}" class="icon-menu"> Input Data
+  </a>
+  <a href="{{ url_for('prediksi') }}">
+    <img src="{{ url_for('static', filename='images/icon_prediksi.png') }}" class="icon-menu"> Lihat Prediksi
+  </a>
+  <a href="{{ url_for('download') }}">
+    <img src="{{ url_for('static', filename='images/icon_download.png') }}" class="icon-menu"> Download
+  </a>
+  <a href="{{ url_for('latihmodel') }}">
+    <img src="{{ url_for('static', filename='images/icon_latihmodel.png') }}" class="icon-menu"> Pelatihan Model
+  </a>
+</div>
+
+<!-- Baris Logo + Upload CSV -->
+<div class="top-bar">
+  <div class="logo-left">
+    <img src="{{ url_for('static', filename='images/logo_website.png') }}" class="logo" alt="Logo Website">
+  </div>
+  <div class="upload-section">
+
+    <!-- Form Upload CSV -->
+    <form action="{{ url_for('upload_csv') }}" method="post" enctype="multipart/form-data" style="display: inline;">
+      <input type="file" name="file" accept=".csv" required style="display: none;" id="upload-csv-input" onchange="this.form.submit()">
+      <label for="upload-csv-input" class="btn-upload">Upload CSV</label>
+    </form>
+
+    <!-- Link download template -->
+    <a href="{{ url_for('static', filename='template/template_upload.csv') }}"
+   class="link-download"
+   download
+   style="display: inline-block; margin-left: 12px; position: relative; top: 14px; color: aliceblue;">
+  Unduh Template Csv
+</a>
+  </div>
+</div>
+
+<!-- Judul Tengah -->
+<div class="content-container">
+  <h1 class="judul">Input Manual atau Upload Data<br>Cuaca</h1>
+
+  <!-- Form -->
+  <form id="cuacaForm" class="form-wrapper" method="POST" action="{{ url_for('submit_input') }}">
+    <!-- Header kolom -->
+    <div class="form-header">
+      <div class="form-title">Tanggal</div>
+      <div class="form-title">RH_avg</div>
+      <div class="form-title">Tavg</div>
+      <div class="form-title">RR</div>
+      <div class="form-title">ss</div>
+      <div class="form-title">Action</div>
+    </div>
+
+    <!-- Baris input -->
+    <div class="input-wrapper" id="inputWrapper">
+      <div class="input-row">
+        <input type="date" name="tanggal[]" class="form-input" required>
+        <input type="text" name="rh_avg[]" placeholder="Contoh: 29.8" class="form-input">
+        <input type="text" name="tavg[]" placeholder="Contoh: 82" class="form-input">
+        <input type="text" name="rr[]" placeholder="Contoh: 25.2" class="form-input">
+        <input type="text" name="ss[]" placeholder="Contoh: 9.8" class="form-input">
+        <div class="action-buttons">
+          <button type="button" class="hapus-button" onclick="hapusBaris(this)">
+            <img src="{{ url_for('static', filename='images/icon_hapus.png') }}" alt="Hapus">
+          </button>
+          <button type="button" class="tambah-button" onclick="tambahBaris()">
+            <img src="{{ url_for('static', filename='images/icon_tambah.png') }}" alt="Tambah">
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tombol Submit -->
+    <button type="submit" class="submit-button">Submit</button>
+  </form>
+</div>
+
+<!-- Script Tambah & Hapus -->
+<script>
+  function tambahBaris() {
+    const wrapper = document.getElementById('inputWrapper');
+    const barisBaru = document.createElement('div');
+    barisBaru.className = 'input-row';
+    barisBaru.innerHTML = `
+      <input type="date" name="tanggal[]" class="form-input" required>
+      <input type="text" name="rh_avg[]" placeholder="Contoh: 29.8" class="form-input">
+      <input type="text" name="tavg[]" placeholder="Contoh: 82" class="form-input">
+      <input type="text" name="rr[]" placeholder="Contoh: 25.2" class="form-input">
+      <input type="text" name="ss[]" placeholder="Contoh: 9.8" class="form-input">
+      <div class="action-buttons">
+        <button type="button" class="hapus-button" onclick="hapusBaris(this)">
+          <img src="{{ url_for('static', filename='images/icon_hapus.png') }}" alt="Hapus">
+        </button>
+        <button type="button" class="tambah-button" onclick="tambahBaris()">
+          <img src="{{ url_for('static', filename='images/icon_tambah.png') }}" alt="Tambah">
+        </button>
+      </div>
+    `;
+    wrapper.appendChild(barisBaru);
+  }
+
+  function hapusBaris(button) {
+    const row = button.parentElement.parentElement;
+    row.remove();
+  }
+
+  function toggleMenu() {
+    document.getElementById('sidebar').classList.toggle('active');
+  }
+</script>
+
+</body>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrapper">
+      {% for category, message in messages %}
+        <div class="alert {{ category }}">
+          <span class="message">{{ message }}</span>
+          <button class="close" onclick="this.parentElement.style.display='none';">&times;</button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+</html>

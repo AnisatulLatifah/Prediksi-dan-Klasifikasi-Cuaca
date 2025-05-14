@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prediksi 7 Hari | Cuaca Jeruk</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='prediksi.css') }}">
+</head>
+<body>
+
+  <!-- Pita Hijau -->
+  <div class="header-bar">
+    <img src="{{ url_for('static', filename='images/icon_garis tiga.png') }}" class="menu-icon" onclick="toggleMenu()" alt="Menu">
+  </div>
+
+  <!-- Sidebar Menu -->
+  <div id="sidebar" class="sidebar">
+    <a href="{{ url_for('home') }}"><img src="{{ url_for('static', filename='images/icon_home.png') }}" class="icon-menu"> Home</a>
+    <a href="{{ url_for('input') }}"><img src="{{ url_for('static', filename='images/icon_input.png') }}" class="icon-menu"> Input Data</a>
+    <a href="{{ url_for('prediksi') }}"><img src="{{ url_for('static', filename='images/icon_prediksi.png') }}" class="icon-menu"> Lihat Prediksi</a>
+    <a href="{{ url_for('download') }}"><img src="{{ url_for('static', filename='images/icon_download.png') }}" class="icon-menu"> Download</a>
+    <a href="{{ url_for('latihmodel') }}"><img src="{{ url_for('static', filename='images/icon_latihmodel.png') }}" class="icon-menu"> Pelatihan Model</a>
+  </div>
+  </div>
+
+  <!-- Logo -->
+  <div class="logo-container">
+    <img src="{{ url_for('static', filename='images/logo_website.png') }}" class="logo" alt="Logo Website">
+  </div>
+
+  <!-- Judul -->
+  <div class="judul">
+    <h1>Cuaca dan Kondisi Pertumbuhan Jeruk<br>7 Hari ke Depan</h1>
+    <h2>Prakiraan cuaca di kota Malang, Jawa Timur, Indonesia</h2>
+  </div>
+
+  <!-- List Prediksi -->
+  <div class="list-prediksi">
+    {% for data in prediksi %}
+    <div class="baris-prediksi">
+
+      <!-- Hari dan Tanggal -->
+      <div class="hari-tanggal">
+        <h2>{{ data.hari }}</h2>
+        <p>{{ data.tanggal }}</p>
+      </div>
+
+      <!-- Status Pertumbuhan -->
+      <div class="status-cuaca">
+        <div class="card-status {{ 'baik' if data.klasifikasi == 'Baik' else 'buruk' }}">
+          <img src="{{ url_for('static', filename='images/icon_cuaca baik.png') if data.klasifikasi == 'Baik' else url_for('static', filename='images/icon_cuaca buruk.png') }}" alt="Status Cuaca" class="status-img">
+
+          <h3 class="klasifikasi-title">{{ data.klasifikasi }}</h3>
+
+          <!-- Ikon Toggle -->
+          <img class="toggle-icon" src="{{ url_for('static', filename='images/icon_drop down.png') }}" onclick="toggleKeterangan(this)" alt="Toggle">
+
+          <!-- Keterangan List -->
+          <ul class="keterangan-list">
+            {% for item in data.keterangan %}
+              <li>{{ item }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+
+      <!-- Data Cuaca -->
+      <div class="data-cuaca">
+        <div class="data-item">
+          <img src="{{ url_for('static', filename='images/icon_kelembaban udara.png') }}" alt="RH">
+          <h4>{{ data.RH_avg }}%</h4>
+          <span>Kelembaban</span>
+        </div>
+        <div class="data-item">
+          <img src="{{ url_for('static', filename='images/icon_temperatur udara.png') }}" alt="Tavg">
+          <h4>{{ data.Tavg }}°C</h4>
+          <span>Suhu</span>
+        </div>
+        <div class="data-item">
+          <img src="{{ url_for('static', filename='images/icon_curah hujan.png') }}" alt="RR">
+          <h4>{{ data.RR }} mm</h4>
+          <span>Curah Hujan</span>
+        </div>
+        <div class="data-item">
+          <img src="{{ url_for('static', filename='images/icon_lama penyinaran.png') }}" alt="SS">
+          <h4>{{ data.SS }} Jam</h4>
+          <span>Lama Penyinaran</span>
+        </div>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Script -->
+  <script>
+    function toggleMenu() {
+      document.getElementById('sidebar').classList.toggle('active');
+    }
+
+    function toggleKeterangan(icon) {
+      const list = icon.nextElementSibling;
+      const isVisible = list.style.display === 'block';
+      list.style.display = isVisible ? 'none' : 'block';
+      icon.src = isVisible
+        ? "{{ url_for('static', filename='images/icon_drop down.png') }}"
+        : "{{ url_for('static', filename='images/icon_up down.png') }}";
+    }
+  </script>
+
+</body>
+</html>

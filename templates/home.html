@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beranda | Prediksi Cuaca Jeruk</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}" />
+</head>
+<body>
+
+  <!-- Pita Hijau Atas -->
+  <div class="header-bar">
+    <img src="{{ url_for('static', filename='images/icon_garis tiga.png') }}" class="menu-icon" onclick="toggleMenu()" alt="Menu">
+  </div>
+
+  <!-- Sidebar Menu -->
+  <div id="sidebar" class="sidebar">
+    <a href="{{ url_for('home') }}"><img src="{{ url_for('static', filename='images/icon_home.png') }}" class="icon-menu"> Home</a>
+    <a href="{{ url_for('input') }}"><img src="{{ url_for('static', filename='images/icon_input.png') }}" class="icon-menu"> Input Data</a>
+    <a href="{{ url_for('prediksi') }}"><img src="{{ url_for('static', filename='images/icon_prediksi.png') }}" class="icon-menu"> Lihat Prediksi</a>
+    <a href="{{ url_for('download') }}"><img src="{{ url_for('static', filename='images/icon_download.png') }}" class="icon-menu"> Download</a>
+    <a href="{{ url_for('latihmodel') }}"><img src="{{ url_for('static', filename='images/icon_latihmodel.png') }}" class="icon-menu"> Pelatihan Model</a>
+  </div>
+
+  <!-- Logo -->
+  <div class="logo-container">
+    <img src="{{ url_for('static', filename='images/logo_website.png') }}" class="logo" alt="Logo Website">
+  </div>
+
+
+  <!-- Konten -->
+  <div class="container">
+
+    <!-- Judul -->
+    <div class="judul">
+      <h1>Cuaca Terkini untuk Pertumbuhan</h1>
+      <h2>Jeruk yang Optimal</h2>
+      <p>Prakiraan cuaca di kota Malang, Jawa Timur, Indonesia</p>
+       <!-- Kontainer tombol prediksi (di atas box-hari-ini) -->
+    </div>
+  
+    <!-- Box Prediksi Hari Ini -->
+    <div class="btn-prediksi-container-float">
+      <a href="{{ url_for('prediksi') }}" class="btn-prediksi">Lihat Prediksi 7 Hari Kedepan</a>
+    </div>
+    <div class="box-hari-ini">
+      
+      <!-- Kolom Tanggal -->
+      <div class="kolom hari-ini">
+        <p>Hari ini</p>
+        <p style="font-size: 16px; font-weight: normal; margin: 4px 0;">{{ hari }}</p>
+        <h2 style="font-size: 32px; font-weight: bold; margin: 0;">{{ tanggal }}</h2>
+      </div>
+
+      <!-- Kolom Keterangan dan Gambar -->
+      <div class="kolom tengah">
+        {% if hasil.klasifikasi == "Baik" %}
+          <img src="{{ url_for('static', filename='images/icon_cuaca baik.png') }}" alt="Cuaca Baik">
+        {% else %}
+          <img src="{{ url_for('static', filename='images/icon_cuaca buruk.png') }}" alt="Cuaca Buruk">
+        {% endif %}
+        <h3 class="{{ 'baik' if hasil.klasifikasi == 'Baik' else 'buruk' }}">{{ hasil.klasifikasi }}</h3>
+
+        {% if hasil.keterangan %}
+          <ul class="keterangan-list">
+            {% for baris in hasil.keterangan %}
+              <li>{{ baris }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="keterangan-empty">Tidak ada keterangan.</p>
+        {% endif %}
+      </div>
+
+      <!-- Kolom Data Angka -->
+      <div class="kolom kanan">
+        <div class="grid-kanan">
+          <div class="data-kiri">
+            <img src="{{ url_for('static', filename='images/icon_kelembaban udara.png') }}" class="icon-besar" alt="RH">
+            <h1 class="angka-besar">{{ hasil.RH_avg }}%</h1>
+            <p class="keterangan-kecil">Kelembaban Udara</p>
+          </div>
+
+          <div class="data-kanan">
+            <div class="data-item">
+              <img src="{{ url_for('static', filename='images/icon_temperatur udara.png') }}" alt="Tavg">
+              <div class="data-text">
+                <p class="keterangan-kecil">Suhu</p>
+                <h2 class="angka-kecil">{{ hasil.Tavg }}°C</h2>
+              </div>
+            </div>
+
+            <div class="data-item">
+              <img src="{{ url_for('static', filename='images/icon_curah hujan.png') }}" alt="RR">
+              <div class="data-text">
+                <p class="keterangan-kecil">Curah Hujan</p>
+                <h2 class="angka-kecil">{{ hasil.RR }} mm</h2>
+              </div>
+            </div>
+
+            <div class="data-item">
+              <img src="{{ url_for('static', filename='images/icon_lama penyinaran.png') }}" alt="ss">
+              <div class="data-text">
+                <p class="keterangan-kecil">Lama Penyinaran</p>
+                <h2 class="angka-kecil">{{ hasil.ss }} Jam</h2>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toggle Sidebar Script -->
+  <script>
+    function toggleMenu() {
+      document.getElementById('sidebar').classList.toggle('active');
+    }
+  </script>
+</body>
+</html>

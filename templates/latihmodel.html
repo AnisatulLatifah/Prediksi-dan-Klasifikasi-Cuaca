@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pelatihan Model</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='latihmodel.css') }}">
+</head>
+<body>
+
+  <!-- Pita Header -->
+  <div class="header-bar">
+    <img src="{{ url_for('static', filename='images/icon_garis tiga.png') }}" class="menu-icon" onclick="toggleMenu()" alt="Menu">
+  </div>
+
+  <!-- Sidebar Menu -->
+  <div id="sidebar" class="sidebar">
+    <a href="{{ url_for('home') }}">
+      <img src="{{ url_for('static', filename='images/icon_home.png') }}" class="icon-menu"> Home
+    </a>
+    <a href="{{ url_for('input') }}">
+      <img src="{{ url_for('static', filename='images/icon_input.png') }}" class="icon-menu"> Input Data
+    </a>
+    <a href="{{ url_for('prediksi') }}">
+      <img src="{{ url_for('static', filename='images/icon_prediksi.png') }}" class="icon-menu"> Lihat Prediksi
+    </a>
+    <a href="{{ url_for('download') }}">
+      <img src="{{ url_for('static', filename='images/icon_download.png') }}" class="icon-menu"> Download
+    </a>
+    <a href="{{ url_for('latihmodel') }}">
+      <img src="{{ url_for('static', filename='images/icon_latihmodel.png') }}" class="icon-menu"> Pelatihan Model
+    </a>
+  </div>
+
+  <!-- Logo -->
+  <div class="logo-container">
+    <img src="{{ url_for('static', filename='images/logo_website.png') }}" class="logo" alt="Logo Website">
+  </div>
+
+  <!-- Judul -->
+  <div class="judul">
+    <h1>Pelatihan Model</h1>
+    <p>Pilih salah satu Model dibawah ini untuk melakukan proses prediksi!</p>
+  </div>
+
+  <!-- Form tabel + checkbox -->
+  <form method="POST" action="{{ url_for('terapkan_model') }}">
+    <div class="table-wrapper">
+      <table class="model-table">
+        <thead>
+          <tr>
+            <th>Versi</th>
+            <th>Nama</th>
+            <th>Tanggal Terakhir Data</th>
+            <th>Tanggal Eksport Model</th>
+            <th>Pilih Model</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>Model1(utama).pkl</td>
+            <td>2025-04-30</td>
+            <td>2025-05-01</td>
+            <td><input type="radio" name="model_terpilih" value="Model1(utama).pkl" required></td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>Model2.pkl</td>
+            <td>2025-05-05</td>
+            <td>2025-05-06</td>
+            <td><input type="radio" name="model_terpilih" value="Model2.pkl"></td>
+          </tr>
+        </tbody>
+      </table>
+  
+      <div class="button-container">
+        <button type="submit" class="train-button">Terapkan Model</button>
+      </div>
+    </div>
+  </form>  
+
+  <script>
+    function toggleMenu() {
+      document.getElementById("sidebar").classList.toggle("active");
+    }
+  </script>
+</body>
+</html>
