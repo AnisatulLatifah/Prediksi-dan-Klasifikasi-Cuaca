@@ -28,7 +28,7 @@
       <img src="{{ url_for('static', filename='images/icon_download.png') }}" class="icon-menu"> Download
     </a>
     <a href="{{ url_for('latihmodel') }}">
-      <img src="{{ url_for('static', filename='images/icon_latihmodel.png') }}" class="icon-menu"> Pelatihan Model
+      <img src="{{ url_for('static', filename='images/icon_latihmodel.png') }}" class="icon-menu"> Pelatihan Data
     </a>
   </div>
 
@@ -39,11 +39,11 @@
 
   <!-- Judul -->
   <div class="judul">
-    <h1>Pelatihan Model</h1>
+    <h1>Pelatihan Data</h1>
     <p>Pilih salah satu Model dibawah ini untuk melakukan proses prediksi!</p>
   </div>
 
-  <!-- Form tabel + checkbox -->
+  <!-- Form tabel + radio -->
   <form method="POST" action="{{ url_for('terapkan_model') }}">
     <div class="table-wrapper">
       <table class="model-table">
@@ -52,33 +52,43 @@
             <th>Versi</th>
             <th>Nama</th>
             <th>Tanggal Terakhir Data</th>
-            <th>Tanggal Eksport Model</th>
+            <th>Tanggal Retrain</th>
             <th>Pilih Model</th>
           </tr>
         </thead>
         <tbody>
+          {% for model in models %}
           <tr>
-            <td>1</td>
-            <td>Model1(utama).pkl</td>
-            <td>2025-04-30</td>
-            <td>2025-05-01</td>
-            <td><input type="radio" name="model_terpilih" value="Model1(utama).pkl" required></td>
+            <td>{{ model.versi }}</td>
+            <td>{{ model.nama }}</td>
+            <td>{{ model.tgl_data }}</td>
+            <td>{{ model.tgl_retrain}}</td>
+            <td>
+              <input type="radio" name="model_terpilih" value="{{ model.path }}"
+              {% if model.path == aktif_path or loop.index == 1 %} checked {% endif %}>
+            </td>
           </tr>
-          <tr>
-            <td>2</td>
-            <td>Model2.pkl</td>
-            <td>2025-05-05</td>
-            <td>2025-05-06</td>
-            <td><input type="radio" name="model_terpilih" value="Model2.pkl"></td>
-          </tr>
+          {% endfor %}
         </tbody>
       </table>
-  
+
       <div class="button-container">
         <button type="submit" class="train-button">Terapkan Model</button>
       </div>
     </div>
-  </form>  
+  </form>
+
+<!-- Flash Message -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="toast" id="toast">
+        {{ message }}
+        <button class="close-btn" onclick="document.getElementById('toast').style.display='none';">&times;</button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
 
   <script>
     function toggleMenu() {

@@ -274,6 +274,7 @@ input[type="date"] {
 
 .alert.success {
   background-color: #28a745;
+  animation: fadeInOut 2.5s ease-in-out forwards;
 }
 
 .alert.danger {

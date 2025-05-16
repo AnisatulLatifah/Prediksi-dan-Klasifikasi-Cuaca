@@ -1,23 +1,12 @@
 import pandas as pd
 import numpy as np
-from keras.models import load_model
+import os
 import joblib
-from sklearn.ensemble import RandomForestClassifier
 from datetime import date, timedelta
+from keras.models import load_model
+from sklearn.ensemble import RandomForestClassifier
 
-# Load model & scaler
-model_rh = load_model('model/rh_avg_model.h5')
-model_tavg = load_model('model/tavg_model.h5')
-model_rr = load_model('model/rr_model.h5')
-model_ss = load_model('model/ss_model.h5')
-model_rf = joblib.load('model/rf_model.pkl')
-
-scaler_rh = joblib.load('model/scaler_rh_avg.pkl')
-scaler_tavg = joblib.load('model/scaler_tavg.pkl')
-scaler_rr = joblib.load('model/scaler_rr.pkl')
-scaler_ss = joblib.load('model/scaler_ss.pkl')
-
-# Ideal range
+# Ideal range untuk pertumbuhan optimal
 ideal_ranges = {
     'RH_avg': (50, 85),
     'Tavg': (25, 30),
@@ -25,6 +14,43 @@ ideal_ranges = {
     'ss': (6, 8)
 }
 
+# Fungsi untuk membaca model aktif yang dipilih pengguna
+def load_model_aktif():
+    file_path = 'model/model_aktif.txt'
+
+    # Jika file tidak ada, atau kosong, isi default ke model_utama
+    if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+        with open(file_path, 'w') as f:
+            f.write('model/model_utama')
+
+    with open(file_path, 'r') as f:
+        path = f.read().strip()
+
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Folder model tidak ditemukan: {path}")
+
+    model_rh = load_model(f"{path}/rh_avg_model.h5")
+    model_tavg = load_model(f"{path}/tavg_model.h5")
+    model_rr = load_model(f"{path}/rr_model.h5")
+    model_ss = load_model(f"{path}/ss_model.h5")
+    model_rf = joblib.load(f"{path}/rf_model.pkl")
+
+    scaler_rh = joblib.load(f"{path}/scaler_rh_avg.pkl")
+    scaler_tavg = joblib.load(f"{path}/scaler_tavg.pkl")
+    scaler_rr = joblib.load(f"{path}/scaler_rr.pkl")
+    scaler_ss = joblib.load(f"{path}/scaler_ss.pkl")
+
+    return model_rh, model_tavg, model_rr, model_ss, model_rf, scaler_rh, scaler_tavg, scaler_rr, scaler_ss
+
+# Fungsi prediksi LSTM 1 hari
+def prediksi_lstm(data_series, model, scaler):
+    data_30hari = np.array(data_series[-30:]).reshape(-1, 1)
+    scaled = scaler.transform(data_30hari).reshape(1, 30, 1)
+    pred_scaled = model.predict(scaled)
+    pred_asli = scaler.inverse_transform(pred_scaled.reshape(-1, 1))
+    return float(pred_asli[0][0])
+
+# Fungsi deskripsi keterangan
 def generate_keterangan(row):
     penjelasan = []
     hasil = row['Peluang Pertumbuhan']
@@ -75,15 +101,11 @@ def generate_keterangan(row):
 
     return penjelasan
 
-def prediksi_lstm(data_series, model, scaler):
-    data_30hari = np.array(data_series[-30:]).reshape(-1, 1)
-    scaled = scaler.transform(data_30hari).reshape(1, 30, 1)
-    pred_scaled = model.predict(scaled)
-    pred_asli = scaler.inverse_transform(pred_scaled.reshape(-1, 1))
-    return float(pred_asli[0][0])
-
-# Prediksi hari ini berdasarkan tanggal sekarang
+# Prediksi hari ini
 def get_prediksi_klasifikasi_hari_ini(df_bersih):
+    model_rh, model_tavg, model_rr, model_ss, model_rf, \
+    scaler_rh, scaler_tavg, scaler_rr, scaler_ss = load_model_aktif()
+
     df_bersih['Tanggal'] = pd.to_datetime(df_bersih['Tanggal'])
     df_bersih = df_bersih[df_bersih['Tanggal'] < pd.to_datetime(date.today())]
     df_bersih = df_bersih.sort_values('Tanggal')
@@ -117,6 +139,7 @@ def get_prediksi_klasifikasi_hari_ini(df_bersih):
         'keterangan': keterangan
     }
 
+# Konversi ke hari dan bulan Indonesia
 def ubah_ke_hari_indo(nama_hari):
     mapping = {
         'Monday': 'Senin', 'Tuesday': 'Selasa', 'Wednesday': 'Rabu',
@@ -131,26 +154,39 @@ def ubah_ke_bulan_indo(nomor_bulan):
     }
     return mapping.get(nomor_bulan, str(nomor_bulan))
 
-# Prediksi 7 Hari kedepan
+# Prediksi 7 hari ke depan (rekursif)
 def get_prediksi_7_hari(df_bersih):
+    model_rh, model_tavg, model_rr, model_ss, model_rf, \
+    scaler_rh, scaler_tavg, scaler_rr, scaler_ss = load_model_aktif()
+
     hasil_list = []
     df_bersih['Tanggal'] = pd.to_datetime(df_bersih['Tanggal'])
     df_bersih = df_bersih[df_bersih['Tanggal'] < pd.to_datetime(date.today())]
     df_bersih = df_bersih.sort_values('Tanggal')
 
-    if len(df_bersih) < 37:
+    if len(df_bersih) < 30:
         raise ValueError("Data tidak cukup untuk prediksi 7 hari ke depan!")
 
-    if len(df_bersih) < 37:
-        raise ValueError("Data tidak cukup untuk prediksi 7 hari ke depan!")
+    rh_seq = scaler_rh.transform(np.array(df_bersih['RH_avg'][-30:]).reshape(-1, 1)).reshape(1, 30, 1)
+    tavg_seq = scaler_tavg.transform(np.array(df_bersih['Tavg'][-30:]).reshape(-1, 1)).reshape(1, 30, 1)
+    rr_seq = scaler_rr.transform(np.array(df_bersih['RR'][-30:]).reshape(-1, 1)).reshape(1, 30, 1)
+    ss_seq = scaler_ss.transform(np.array(df_bersih['ss'][-30:]).reshape(-1, 1)).reshape(1, 30, 1)
 
     for i in range(1, 8):
-        subset = df_bersih.iloc[-(30+i):-i]
+        rh_pred_scaled = model_rh.predict(rh_seq)[0][0]
+        tavg_pred_scaled = model_tavg.predict(tavg_seq)[0][0]
+        rr_pred_scaled = model_rr.predict(rr_seq)[0][0]
+        ss_pred_scaled = model_ss.predict(ss_seq)[0][0]
 
-        rh = prediksi_lstm(subset['RH_avg'], model_rh, scaler_rh)
-        tavg = prediksi_lstm(subset['Tavg'], model_tavg, scaler_tavg)
-        rr = prediksi_lstm(subset['RR'], model_rr, scaler_rr)
-        ss = prediksi_lstm(subset['ss'], model_ss, scaler_ss)
+        rh_seq = np.append(rh_seq[:, 1:, :], [[[rh_pred_scaled]]], axis=1)
+        tavg_seq = np.append(tavg_seq[:, 1:, :], [[[tavg_pred_scaled]]], axis=1)
+        rr_seq = np.append(rr_seq[:, 1:, :], [[[rr_pred_scaled]]], axis=1)
+        ss_seq = np.append(ss_seq[:, 1:, :], [[[ss_pred_scaled]]], axis=1)
+
+        rh = float(scaler_rh.inverse_transform([[rh_pred_scaled]])[0][0])
+        tavg = float(scaler_tavg.inverse_transform([[tavg_pred_scaled]])[0][0])
+        rr = float(scaler_rr.inverse_transform([[rr_pred_scaled]])[0][0])
+        ss = float(scaler_ss.inverse_transform([[ss_pred_scaled]])[0][0])
 
         df_pred = pd.DataFrame([{
             'RH_avg': rh, 'Tavg': tavg, 'RR': rr, 'ss': ss

@@ -168,3 +168,32 @@
     background-color: #369e36;
   }
   
+.toast {
+  background-color: #2e7d32;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+  font-size: 13px;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: fit-content;
+  margin: 16px auto 0;
+  justify-content: center;
+  animation: fadeInOut 2.5s ease-in-out forwards;
+}
+.toast .close-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+}
+@keyframes fadeInOut {
+  0%   { opacity: 0; transform: translateY(10px); }
+  10%  { opacity: 1; transform: translateY(0); }
+  90%  { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(10px); display: none; }
+}

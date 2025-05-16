@@ -5,6 +5,7 @@ from datetime import timedelta
 import mysql.connector
 import os
 from werkzeug.utils import secure_filename  # ⬅️ penting
+from model.train_model import train_and_save_all
 
 from model.get_prediksi_klasifikasi import (
     get_prediksi_klasifikasi_hari_ini,
@@ -159,11 +160,13 @@ def submit_input():
                 float(row['RR']),
                 float(row['ss'])
             ))
-            flash(f"✔️ Tersimpan: {tanggal.date()}", "success")
+            flash(f"✅ Tersimpan: {tanggal.date()}, Model terbaru berhasil diretrain!", "success")
         except Exception as e:
             flash(f"❌ Gagal simpan {tanggal.date()}: {e}", "danger")
 
     db.commit()
+
+    train_and_save_all()
     return redirect(url_for('input'))
 
 
@@ -232,7 +235,8 @@ def upload_csv():
                 ))
 
             db.commit()
-            flash("CSV berhasil diunggah dan disimpan.", "success")
+            flash("✅ CSV berhasil diunggah dan disimpan. Model terbaru berhasil diretrain!", "success")
+            train_and_save_all()
 
         except Exception as e:
             flash(f"Gagal memproses file CSV: {e}", "danger")
@@ -246,20 +250,93 @@ def upload_csv():
 def download():
     return render_template('download.html')
 
+
 # ====== HALAMAN LATIH MODEL ======
-@app.route('/latihmodel')
+import os
+import mysql.connector
+from flask import render_template, request, redirect, url_for, flash
+
+def get_last_date_from(table_name):
+    try:
+        conn = mysql.connector.connect(
+            host='localhost',
+            user='root',
+            password='',
+            database='cuaca_db'
+        )
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT MAX(Tanggal) FROM `{table_name}`")
+        result = cursor.fetchone()[0]
+        conn.close()
+        return result.strftime("%Y-%m-%d") if result else "-"
+    except Exception as e:
+        print(f"DB error on {table_name}:", e)
+        return "-"
+
+@app.route('/latihmodel', methods=['GET'])
 def latihmodel():
-    return render_template('latihmodel.html')
+    model_list = []
+
+    # Model utama (cuaca_lama)
+    model_list.append({
+        "versi": 1,
+        "nama": "model utama.pkl",
+        "path": "model/model_utama",
+        "tgl_data": get_last_date_from("cuaca_lama"),
+        "tgl_retrain": "2025-05-01"
+    })
+
+    # Model retrain (cuaca_input_user)
+    retrain_dir = os.path.join("model", "model_retrain")
+    if os.path.exists(retrain_dir):
+        subdirs = sorted([d for d in os.listdir(retrain_dir) if os.path.isdir(os.path.join(retrain_dir, d))])
+        for i, folder in enumerate(subdirs):
+            folder_path = os.path.join(retrain_dir, folder).replace("\\", "/")
+
+            tanggal_retrain = "-"
+            tanggal_file = os.path.join(folder_path, "tanggal_retrain.txt")
+            if os.path.exists(tanggal_file):
+                with open(tanggal_file) as f:
+                    tanggal_retrain = f.read().strip()
+
+            model_list.append({
+                "versi": i + 2,
+                "nama": f"{folder}.pkl",
+                "path": folder_path,
+                "tgl_data": get_last_date_from("cuaca_input_user"),
+                "tgl_retrain": tanggal_retrain
+            })
+
+    # Model aktif
+    aktif_path_file = os.path.join("model", "model_aktif.txt")
+    default_path = "model/model_utama"
+    if not os.path.exists(aktif_path_file) or os.path.getsize(aktif_path_file) == 0:
+        with open(aktif_path_file, 'w') as f:
+            f.write(default_path)
+
+    try:
+        with open(aktif_path_file, "r") as f:
+            aktif_path = f.read().strip()
+    except:
+        aktif_path = default_path
+
+    return render_template("latihmodel.html", models=model_list, aktif_path=aktif_path)
+
 
 # ====== TERAPKAN MODEL ======
 @app.route('/terapkan_model', methods=['POST'])
 def terapkan_model():
     model_terpilih = request.form.get('model_terpilih')
     if model_terpilih:
-        with open('model_aktif.txt', 'w') as f:
-            f.write(model_terpilih)
-        flash(f"Model '{model_terpilih}' berhasil diterapkan.", 'success')
+        path_file = os.path.join("model", "model_aktif.txt")
+        with open(path_file, 'w') as f:
+            f.write(model_terpilih.strip())
+
+        model_name = model_terpilih.strip().split("/")[-1]
+        flash(f"Model '{model_name}' berhasil diterapkan. Silahkan lihat prediksi dan klasifikasinya di halaman home dan prediksi!", 'success')
+
     return redirect(url_for('latihmodel'))
+
 
 # ====== JALANKAN FLASK ======
 if __name__ == '__main__':
