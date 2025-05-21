@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Laporan Prediksi Cuaca</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        h1, h2 { text-align: center; margin: 0; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+            font-size: 14px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        ul { margin-top: 0; }
+        li { margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+    <!-- Header dengan logo -->
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+        <img src="{{ logo_path }}" alt="Logo" style="height: 60px;">
+        <div style="flex-grow: 1; text-align: center;">
+            <h1>LAPORAN PREDIKSI CUACA</h1>
+            <h2>Periode: {{ periode }}</h2>
+        </div>
+        <div style="width: 60px;"></div>
+    </div>
+
+    <!-- Tabel prediksi -->
+    <table>
+        <thead>
+            <tr>
+                <th>Tanggal</th>
+                <th>RH_avg (%)</th>
+                <th>Tavg (°C)</th>
+                <th>RR (mm)</th>
+                <th>SS (jam)</th>
+                <th>Klasifikasi</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data %}
+            <tr>
+                <td>{{ row.tanggal }}</td>
+                <td>{{ row.RH_avg }}</td>
+                <td>{{ row.Tavg }}</td>
+                <td>{{ row.RR }}</td>
+                <td>{{ row.ss }}</td>
+                <td>{{ row.Klasifikasi }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Keterangan per hari -->
+    <h3>Keterangan:</h3>
+    {% for item in deskripsi %}
+        <div style="margin-bottom: 20px;">{{ item | safe }}</div>
+    {% endfor %}
+</body>
+</html>

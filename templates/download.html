@@ -47,9 +47,9 @@
   <div class="download-box">
     <hr class="box-line">
     <div class="download-container">
-      <a href="{{ url_for('static', filename='hasil/data_prediksi.pdf') }}" class="btn pdf" download>.Pdf</a>
+      <a href="{{ url_for('cetak_pdf') }}" class="btn pdf">.Pdf</a>
       <span class="atau">Atau</span>
-      <a href="{{ url_for('static', filename='hasil/data_prediksi.xls') }}" class="btn xls" download>.Xls</a>
+      <a href="{{ url_for('download_excel') }}" class="btn xls">.Xls</a>
     </div>
     <hr class="box-line">
   </div>

@@ -6,7 +6,7 @@
 }
 
 html, body {
-  padding-top: 30px; /* ✅ Tinggi sama dengan .header-bar */
+  padding-top: 30px;
   font-family: 'Segoe UI', sans-serif;
   background-image: url("images/background2.jpg");
   background-size: cover;
@@ -25,6 +25,18 @@ html, body {
   left: 0;
   right: 0;
   z-index: 9999;
+}
+
+.last-update-text {
+    color: #add9b6;
+    font-size: 0.9rem;
+    font-weight: 400;
+    text-align: center;
+    margin-top: 0.8rem;
+    margin-bottom: 5rem;
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 8px;
 }
 
 /* ICON MENU */
@@ -91,7 +103,7 @@ html, body {
 .judul {
   font-size: 2.5rem;
   font-weight: bold;
-  margin-bottom: 100px;
+  margin-bottom: -1rem;
   color: #c0edd0;
 }
 

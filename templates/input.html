@@ -59,6 +59,7 @@
 <!-- Judul Tengah -->
 <div class="content-container">
   <h1 class="judul">Input Manual atau Upload Data<br>Cuaca</h1>
+  <h2 class="last-update-text">Input data terakhir: {{ last_date }}</h2>
 
   <!-- Form -->
   <form id="cuacaForm" class="form-wrapper" method="POST" action="{{ url_for('submit_input') }}">
