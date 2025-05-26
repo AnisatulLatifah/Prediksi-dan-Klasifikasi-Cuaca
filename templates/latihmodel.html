@@ -43,57 +43,59 @@
     <p>Pilih salah satu Model dibawah ini untuk melakukan proses prediksi!</p>
   </div>
 
-  <!-- Form tabel + radio -->
-  <form method="POST" action="{{ url_for('terapkan_model') }}">
-    <div class="table-wrapper">
-      <table class="model-table">
-        <thead>
-          <tr>
-            <th>Versi</th>
-            <th>Nama</th>
-            <th>Tanggal Terakhir Data</th>
-            <th>Tanggal Retrain</th>
-            <th>Pilih Model</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for model in models %}
-          <tr>
-            <td>{{ model.versi }}</td>
-            <td>{{ model.nama }}</td>
-            <td>{{ model.tgl_data }}</td>
-            <td>{{ model.tgl_retrain}}</td>
-            <td>
-              <input type="radio" name="model_terpilih" value="{{ model.path }}"
-              {% if model.path == aktif_path or loop.index == 1 %} checked {% endif %}>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+  <!-- Tabel Model -->
+  <div class="table-wrapper">
+    <table class="model-table">
+      <thead>
+        <tr>
+          <th>Versi</th>
+          <th>Nama</th>
+          <th>Tanggal Terakhir Data</th>
+          <th>Tanggal Retrain</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for model in models %}
+        <tr>
+          <td>{{ model.versi }}</td>
+          <td>{{ model.nama }}</td>
+          <td>{{ model.tgl_data }}</td>
+          <td>{{ model.tgl_retrain }}</td>
+          <td>
+            {% if model.path == aktif_path %}
+              <span style="color: white; background-color: green; padding: 4px 10px; border-radius: 20px; font-weight: bold;">
+                Aktif
+              </span>
+            {% else %}
+              <span style="color: gray; font-weight: bold;">
+                Tidak Aktif
+              </span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
-      <div class="button-container">
-        <button type="submit" class="train-button">Terapkan Model</button>
-      </div>
-    </div>
-  </form>
-
-<!-- Flash Message -->
+  <!-- Flash Message -->
   {% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div class="toast" id="toast">
-        {{ message }}
-        <button class="close-btn" onclick="document.getElementById('toast').style.display='none';">&times;</button>
-      </div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="toast" id="toast">
+          {{ message }}
+          <button class="close-btn" onclick="document.getElementById('toast').style.display='none';">&times;</button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
 
   <script>
     function toggleMenu() {
       document.getElementById("sidebar").classList.toggle("active");
     }
   </script>
+
 </body>
 </html>

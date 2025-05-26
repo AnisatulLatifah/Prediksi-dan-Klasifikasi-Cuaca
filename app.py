@@ -68,6 +68,16 @@ def get_last_data_date_by_model(path_model):
 @app.route('/')
 def home():
     from datetime import date, timedelta
+    import locale
+
+    # Set locale ke Bahasa Indonesia (pastikan sistem mendukung)
+    try:
+        locale.setlocale(locale.LC_TIME, 'id_ID.UTF-8')  # Linux/macOS
+    except:
+        try:
+            locale.setlocale(locale.LC_TIME, 'ind')  # Windows
+        except:
+            pass  # Lewatkan jika locale tidak tersedia
 
     # Ambil model yang sedang aktif
     with open("model/model_aktif.txt", "r") as f:
@@ -115,38 +125,14 @@ def home():
     df_bersih['Tanggal'] = pd.to_datetime(df_bersih['Tanggal'])
 
     # Prediksi hari ini
-    hasil = get_prediksi_klasifikasi_hari_ini(df_bersih)
+    hasil = get_prediksi_klasifikasi_hari_ini(df_bersih, last_date)
 
-    # Format hari dan tanggal
-    hari_indonesia = {
-        'Monday': 'Senin',
-        'Tuesday': 'Selasa',
-        'Wednesday': 'Rabu',
-        'Thursday': 'Kamis',
-        'Friday': 'Jumat',
-        'Saturday': 'Sabtu',
-        'Sunday': 'Minggu'
-    }
-    bulan_indonesia = {
-        'January': 'Januari',
-        'February': 'Februari',
-        'March': 'Maret',
-        'April': 'April',
-        'May': 'Mei',
-        'June': 'Juni',
-        'July': 'Juli',
-        'August': 'Agustus',
-        'September': 'September',
-        'October': 'Oktober',
-        'November': 'November',
-        'December': 'Desember'
-    }
-
-    hari = hari_indonesia[prediksi_date.strftime('%A')] 
-    bulan = bulan_indonesia[prediksi_date.strftime('%B')]
+    # Gunakan hari dan bulan langsung dari locale Indonesia
+    hari = prediksi_date.strftime('%A')  # e.g., "Rabu"
+    bulan = prediksi_date.strftime('%B')  # e.g., "Mei"
     tanggal_indo = f"{prediksi_date.day:02d} {bulan} {prediksi_date.year}"
 
-    last_data_str = f"{last_date.day:02d} {bulan_indonesia[last_date.strftime('%B')]} {last_date.year}"
+    last_data_str = f"{last_date.day:02d} {last_date.strftime('%B')} {last_date.year}"
 
     return render_template('home.html',
                            hasil=hasil,
@@ -159,72 +145,40 @@ def home():
 def prediksi():
     from datetime import date
     import pandas as pd
-    import mysql.connector
-
-    # Baca model aktif
-    with open("model/model_aktif.txt", "r") as f:
-        path_model = f.read().strip()
-
-    # Tentukan sumber tabel berdasarkan model aktif
-    if 'model_utama' in path_model:
-        table = 'cuaca_lama'
-    else:
-        table = 'cuaca_input_user'
-
-    # Ambil last_date sesuai tabel yang aktif
-    conn = mysql.connector.connect(
-        host='localhost',
-        user='root',
-        password='',
-        database='cuaca_db'
+    from model.get_prediksi_klasifikasi import (
+        get_prediksi_7_hari,
+        get_df_bersih_by_model,
+        get_last_date_by_model
     )
-    cursor = conn.cursor()
-    cursor.execute(f"SELECT MAX(tanggal) FROM {table}")
-    last_data_date = cursor.fetchone()[0]
 
-    # 🔧 Penanganan jika None
-    if last_data_date is None:
-        last_data_date = date.today()
-    else:
-        last_data_date = pd.to_datetime(last_data_date).date()
+    # Ambil data & last_date sesuai model aktif
+    df_bersih = get_df_bersih_by_model()
+    last_data_date = get_last_date_by_model()
 
-    # Ambil data bersih dari cuaca_lama + cuaca_input_user
-    df_lama = pd.read_sql("SELECT * FROM cuaca_lama", conn)
-    df_input = pd.read_sql("SELECT * FROM cuaca_input_user", conn)
-    conn.close()
-
-    df_bersih = pd.concat([df_lama, df_input], ignore_index=True)
-    df_bersih['Tanggal'] = pd.to_datetime(df_bersih['Tanggal'])
-    df_bersih = df_bersih.sort_values('Tanggal')
-
-    # ⬇️ Prediksi 7 hari ke depan
-    from model.get_prediksi_klasifikasi import get_prediksi_7_hari
     hasil_7hari = get_prediksi_7_hari(df_bersih, last_data_date)
 
-    # Format tanggal awal & akhir prediksi
     tanggal_awal = hasil_7hari[0]['tanggal']
     tanggal_akhir = hasil_7hari[-1]['tanggal']
     range_prediksi = f"{tanggal_awal} hingga {tanggal_akhir}"
 
-    # Format tanggal terakhir data ke format Indonesia
-    bulan_indonesia = {
-        'January': 'Januari', 'February': 'Februari', 'March': 'Maret', 'April': 'April',
-        'May': 'Mei', 'June': 'Juni', 'July': 'Juli', 'August': 'Agustus',
-        'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Desember'
-    }
-
     def format_tanggal(tgl):
+        bulan_indonesia = {
+            'January': 'Januari', 'February': 'Februari', 'March': 'Maret', 'April': 'April',
+            'May': 'Mei', 'June': 'Juni', 'July': 'Juli', 'August': 'Agustus',
+            'September': 'September', 'October': 'Oktober', 'November': 'November', 'December': 'Desember'
+        }
         nama_bulan_inggris = tgl.strftime('%B')
-        bulan = bulan_indonesia.get(nama_bulan_inggris, nama_bulan_inggris)  # fallback ke nama asli jika tidak ada
+        bulan = bulan_indonesia.get(nama_bulan_inggris, nama_bulan_inggris)
         return f"{tgl.day:02d} {bulan} {tgl.year}"
 
-    last_data_str = format_tanggal(pd.to_datetime(last_data_date))
+    last_data_str = format_tanggal(last_data_date)
 
     return render_template('prediksi.html',
         prediksi=hasil_7hari,
         range_prediksi=range_prediksi,
         last_data_str=last_data_str
     )
+
 
 # ====== HALAMAN INPUT DATA ======
 @app.route('/input')
@@ -240,16 +194,14 @@ def input():
     last_date = cursor.fetchone()[0]
     conn.close()
 
-    # Format ke "31 Desember 2025" (pakai locale ID)
     import locale
-    locale.setlocale(locale.LC_TIME, 'id_ID.UTF-8')  # Atau 'indonesian' di Windows
+    locale.setlocale(locale.LC_TIME, 'id_ID.UTF-8')
     formatted_date = last_date.strftime('%d %B %Y') if last_date else 'Belum ada data'
     
     return render_template('input.html', last_date=formatted_date)
 
-# ====== SUBMIT INPUT MANUAL ======
-from datetime import timedelta
 
+# ====== SUBMIT INPUT MANUAL ======
 @app.route('/submit_input', methods=['POST'])
 def submit_input():
     cursor.execute("SELECT MAX(tanggal) FROM cuaca_input_user")
@@ -259,9 +211,8 @@ def submit_input():
         max_tanggal = pd.to_datetime(max_tanggal)
         next_allowed_date = max_tanggal + timedelta(days=1)
     else:
-        next_allowed_date = None  # Jika belum ada data, izinkan tanggal bebas
+        next_allowed_date = None
 
-    # Ambil data dari form
     tanggal_list = request.form.getlist('tanggal[]')
     rh_list = request.form.getlist('rh_avg[]')
     tavg_list = request.form.getlist('tavg[]')
@@ -269,15 +220,22 @@ def submit_input():
     ss_list = request.form.getlist('ss[]')
 
     df_input = pd.DataFrame({
-    'tanggal': tanggal_list,   # ✅ huruf kecil, agar konsisten
-    'RH_avg': rh_list,
-    'Tavg': tavg_list,
-    'RR': rr_list,
-    'ss': ss_list
-})
+        'tanggal': tanggal_list,
+        'RH_avg': rh_list,
+        'Tavg': tavg_list,
+        'RR': rr_list,
+        'ss': ss_list
+    })
 
     df_input['tanggal'] = pd.to_datetime(df_input['tanggal'], errors='coerce')
-    df_bersih = bersihkan_data(df_input.copy())
+    df_lama = pd.read_sql("SELECT * FROM cuaca_lama", db)
+    df_user = pd.read_sql("SELECT * FROM cuaca_input_user", db)
+    df_full = pd.concat([df_lama, df_user, df_input], ignore_index=True)
+    df_full['Tanggal'] = pd.to_datetime(df_full['Tanggal'])
+
+    df_bersih_full = bersihkan_data(df_full)
+    df_bersih = df_bersih_full[df_bersih_full['Tanggal'].isin(df_input['tanggal'])]
+
 
     if df_bersih.empty:
         flash("Data tidak valid setelah preprocessing!", "danger")
@@ -285,17 +243,14 @@ def submit_input():
 
     for _, row in df_bersih.iterrows():
         tanggal = row['tanggal']
-
         if pd.isna(tanggal):
             flash("❌ Tanggal kosong atau tidak valid.", "danger")
             continue
 
-        # Validasi: hanya boleh 1 hari setelah max_tanggal
         if next_allowed_date and tanggal != next_allowed_date:
             flash(f"⚠️ Hanya boleh input data untuk tanggal {next_allowed_date.date()}. Dilewati: {tanggal.date()}", "warning")
             continue
 
-        # Validasi data numerik
         if any(pd.isna([row['RH_avg'], row['Tavg'], row['RR'], row['ss']])):
             flash(f"⚠️ Baris {tanggal.date()} dilewati karena nilai kosong.", "warning")
             continue
@@ -311,19 +266,16 @@ def submit_input():
                 float(row['RR']),
                 float(row['ss'])
             ))
-            flash(f"✅ Tersimpan: {tanggal.date()}, Model terbaru berhasil diretrain!", "success")
+            flash(f"✅ Tersimpan: {tanggal.date()}", "success")
         except Exception as e:
             flash(f"❌ Gagal simpan {tanggal.date()}: {e}", "danger")
 
     db.commit()
-
     train_and_save_all()
-    return redirect(url_for('input'))
+    return render_template('input.html')  
 
 
 # ====== UPLOAD CSV ======
-from datetime import timedelta
-
 @app.route('/upload_csv', methods=['POST'])
 def upload_csv():
     if 'file' not in request.files:
@@ -341,35 +293,44 @@ def upload_csv():
         file.save(path)
 
         try:
-            df = pd.read_csv(path)
-            df['Tanggal'] = pd.to_datetime(df['Tanggal'], format='%d-%m-%Y', errors='coerce')
+            # Baca file
+            df_csv = pd.read_csv(path)
+            df_csv['Tanggal'] = pd.to_datetime(df_csv['Tanggal'], format='%d-%m-%Y', errors='coerce')
 
-            df_bersih = bersihkan_data(df)
+            # Gabungkan dengan data lama + input user
+            df_lama = pd.read_sql("SELECT * FROM cuaca_lama", db)
+            df_user = pd.read_sql("SELECT * FROM cuaca_input_user", db)
+            df_full = pd.concat([df_lama, df_user, df_csv], ignore_index=True)
+            df_full['Tanggal'] = pd.to_datetime(df_full['Tanggal'])
+
+            # Bersihkan seluruh data
+            df_bersih_full = bersihkan_data(df_full)
+
+            # Ambil hanya baris hasil dari input CSV
+            tanggal_input = pd.to_datetime(df_csv['Tanggal'])
+            df_bersih = df_bersih_full[df_bersih_full['Tanggal'].isin(tanggal_input)]
+
             if df_bersih.empty:
                 flash("File tidak berisi data valid setelah preprocessing!", "danger")
                 return redirect(url_for('input'))
 
-            # Ambil tanggal terakhir dari DB
+            # Validasi tanggal
             cursor.execute("SELECT MAX(tanggal) FROM cuaca_input_user")
             max_tanggal_db = cursor.fetchone()[0]
 
-            # Ambil semua tanggal dari CSV (pastikan sudah ascending)
             tanggal_csv = df_bersih['Tanggal'].dropna().sort_values().tolist()
-
-            # Validasi awal: harus sehari setelah tanggal terakhir di DB
             if max_tanggal_db:
                 expected_start = max_tanggal_db + timedelta(days=1)
                 if tanggal_csv[0].date() != expected_start:
                     flash(f"❌ Tanggal pertama ({tanggal_csv[0].date()}) harus tepat sehari setelah data terakhir ({max_tanggal_db}).", "danger")
                     return redirect(url_for('input'))
 
-            # Validasi urutan tanggal dalam CSV harus 1 hari berurutan
             for i in range(1, len(tanggal_csv)):
                 if tanggal_csv[i].date() != tanggal_csv[i-1].date() + timedelta(days=1):
-                    flash(f"❌ Data CSV tidak urut. Tanggal {tanggal_csv[i-1].date()} langsung loncat ke {tanggal_csv[i].date()}. Periksa dataset Anda.", "danger")
+                    flash(f"❌ Data CSV tidak urut. Tanggal {tanggal_csv[i-1].date()} langsung loncat ke {tanggal_csv[i].date()}.", "danger")
                     return redirect(url_for('input'))
 
-            # Proses penyimpanan jika lolos validasi
+            # Simpan ke database
             for _, row in df_bersih.iterrows():
                 tanggal = row['Tanggal']
                 if pd.isna(tanggal): continue
@@ -386,15 +347,17 @@ def upload_csv():
                 ))
 
             db.commit()
-            flash("✅ CSV berhasil diunggah dan disimpan. Model terbaru berhasil diretrain!", "success")
             train_and_save_all()
+            flash("✅ CSV berhasil disimpan dan model berhasil dilatih!", "success")
+            return redirect(url_for('input'))
 
         except Exception as e:
             flash(f"Gagal memproses file CSV: {e}", "danger")
+            return redirect(url_for('input'))
     else:
         flash("Format file tidak didukung. Harus .csv", "danger")
+        return redirect(url_for('input'))
 
-    return redirect(url_for('input'))
 
 # ====== HALAMAN DOWNLOAD ======
 @app.route('/download')
@@ -482,9 +445,14 @@ def cetak_pdf():
     df_input = pd.read_sql("SELECT * FROM cuaca_input_user", conn)
     conn.close()
 
-    df_bersih = pd.concat([df_lama, df_input], ignore_index=True)
+    if 'model_utama' in path_model:
+        df_bersih = df_lama.copy()
+    else:
+        df_bersih = pd.concat([df_lama, df_input], ignore_index=True)
+
     df_bersih['Tanggal'] = pd.to_datetime(df_bersih['Tanggal'])
     df_bersih = df_bersih.sort_values('Tanggal')
+
 
     # Ambil hasil prediksi dari model
     hasil = get_prediksi_7_hari(df_bersih, last_date)
@@ -509,7 +477,7 @@ def cetak_pdf():
     # Konfigurasi dan generate PDF
     config = pdfkit.configuration(wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe")
     options = {
-    'enable-local-file-access': None  # ✅ WAJIB jika load gambar lokal (file://)
+    'enable-local-file-access': None 
 }
     pdf_bytes = pdfkit.from_string(html_out, False, configuration=config, options=options)
 
@@ -518,14 +486,12 @@ def cetak_pdf():
 
 # ====== HALAMAN LATIH MODEL ======
 def get_last_date_from(table):
-    import mysql.connector
-    import pandas as pd
-
     conn = mysql.connector.connect(
         host='localhost',
         user='root',
         password='',
-        database='cuaca_db'
+        database='cuaca_db',
+        port=3306
     )
     cursor = conn.cursor()
     cursor.execute(f"SELECT MAX(tanggal) FROM {table}")
@@ -536,26 +502,27 @@ def get_last_date_from(table):
         return "-"
     return pd.to_datetime(result).strftime('%Y-%m-%d')
 
+
+# ====== HALAMAN LATIH MODEL ======
 @app.route('/latihmodel', methods=['GET'])
 def latihmodel():
     model_list = []
 
-    # Model utama (cuaca_lama)
+    # === 1. Model utama
     model_list.append({
         "versi": 1,
-        "nama": "model utama.pkl",
+        "nama": "model utama",
         "path": "model/model_utama",
         "tgl_data": get_last_date_from("cuaca_lama"),
         "tgl_retrain": "2025-05-01"
     })
 
-    # Model retrain (cuaca_input_user)
+    # === 2. Model retrain dari folder
     retrain_dir = os.path.join("model", "model_retrain")
     if os.path.exists(retrain_dir):
         subdirs = sorted([d for d in os.listdir(retrain_dir) if os.path.isdir(os.path.join(retrain_dir, d))])
         for i, folder in enumerate(subdirs):
             folder_path = os.path.join(retrain_dir, folder).replace("\\", "/")
-
             tanggal_retrain = "-"
             tanggal_file = os.path.join(folder_path, "tanggal_retrain.txt")
             if os.path.exists(tanggal_file):
@@ -564,24 +531,31 @@ def latihmodel():
 
             model_list.append({
                 "versi": i + 2,
-                "nama": f"{folder}.pkl",
+                "nama": f"{folder}",
                 "path": folder_path,
                 "tgl_data": get_last_date_from("cuaca_input_user"),
                 "tgl_retrain": tanggal_retrain
             })
 
-    # Model aktif
-    aktif_path_file = os.path.join("model", "model_aktif.txt")
-    default_path = "model/model_utama"
-    if not os.path.exists(aktif_path_file) or os.path.getsize(aktif_path_file) == 0:
-        with open(aktif_path_file, 'w') as f:
-            f.write(default_path)
+    # === 3. Tambahkan kolom datetime untuk pengurutan
+    for model in model_list:
+        try:
+            model["tgl_retrain_dt"] = pd.to_datetime(model["tgl_retrain"])
+        except:
+            model["tgl_retrain_dt"] = pd.Timestamp("1900-01-01")
 
-    try:
-        with open(aktif_path_file, "r") as f:
+    model_list = sorted(model_list, key=lambda x: x["tgl_retrain_dt"], reverse=True)
+
+    # === 4. Ambil model aktif dari file model_aktif.txt
+    aktif_path = ""
+    model_aktif_file = os.path.join("model", "model_aktif.txt")
+    if os.path.exists(model_aktif_file):
+        with open(model_aktif_file) as f:
             aktif_path = f.read().strip()
-    except:
-        aktif_path = default_path
+
+    # === 5. Tandai model aktif
+    for model in model_list:
+        model["disabled"] = model["path"] != aktif_path
 
     return render_template("latihmodel.html", models=model_list, aktif_path=aktif_path)
 

@@ -13,11 +13,44 @@ ideal_ranges = {
     'RR': (2.6, 8),
     'ss': (6, 8)
 }
+# Ambil tanggal terakhir dari tabel berdasarkan model aktif
+def get_last_date_by_model():
+    import mysql.connector
+    import pandas as pd
+
+    with open("model/model_aktif.txt", "r") as f:
+        path_model = f.read().strip()
+
+    if 'model_utama' in path_model:
+        table = 'cuaca_lama'
+    else:
+        table = 'cuaca_input_user'
+
+    conn = mysql.connector.connect(
+        host='localhost',
+        user='root',
+        password='',
+        database='cuaca_db'
+    )
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT MAX(tanggal) FROM {table}")
+    result = cursor.fetchone()[0]
+    conn.close()
+
+    return pd.to_datetime(result) if result else pd.to_datetime(date.today())
+
+# Fungsi untuk mengecek apakah model aktif adalah model utama
+def is_model_utama():
+    try:
+        with open("model/model_aktif.txt", "r") as f:
+            aktif = f.read().strip()
+            return "model_utama" in aktif
+    except:
+        return True
 
 # Fungsi untuk membaca model aktif yang dipilih pengguna
 def load_model_aktif():
     file_path = 'model/model_aktif.txt'
-
     if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
         with open(file_path, 'w') as f:
             f.write('model/model_utama')
@@ -28,10 +61,10 @@ def load_model_aktif():
     if not os.path.exists(path):
         raise FileNotFoundError(f"Folder model tidak ditemukan: {path}")
 
-    model_rh = load_model(f"{path}/rh_avg_model.h5")
-    model_tavg = load_model(f"{path}/tavg_model.h5")
-    model_rr = load_model(f"{path}/rr_model.h5")
-    model_ss = load_model(f"{path}/ss_model.h5")
+    model_rh = load_model(f"{path}/rh_avg_model.h5", compile=False)
+    model_tavg = load_model(f"{path}/tavg_model.h5", compile=False)
+    model_rr = load_model(f"{path}/rr_model.h5", compile=False)
+    model_ss = load_model(f"{path}/ss_model.h5", compile=False)
     model_rf = joblib.load(f"{path}/rf_model.pkl")
 
     scaler_rh = joblib.load(f"{path}/scaler_rh_avg.pkl")
@@ -40,6 +73,31 @@ def load_model_aktif():
     scaler_ss = joblib.load(f"{path}/scaler_ss.pkl")
 
     return model_rh, model_tavg, model_rr, model_ss, model_rf, scaler_rh, scaler_tavg, scaler_rr, scaler_ss
+
+# Fungsi ambil data dari database sesuai model aktif
+def get_df_bersih_by_model():
+    import mysql.connector
+
+    with open("model/model_aktif.txt", "r") as f:
+        path_model = f.read().strip()
+
+    conn = mysql.connector.connect(
+        host='localhost',
+        user='root',
+        password='',
+        database='cuaca_db'
+    )
+
+    if 'model_utama' in path_model:
+        df = pd.read_sql("SELECT * FROM cuaca_lama ORDER BY tanggal ASC", conn)
+    else:
+        df_lama = pd.read_sql("SELECT * FROM cuaca_lama ORDER BY tanggal ASC", conn)
+        df_input = pd.read_sql("SELECT * FROM cuaca_input_user ORDER BY tanggal ASC", conn)
+        df = pd.concat([df_lama, df_input], ignore_index=True)
+
+    conn.close()
+    df['Tanggal'] = pd.to_datetime(df['Tanggal'])
+    return df
 
 # Fungsi prediksi LSTM 1 hari
 def prediksi_lstm(data_series, model, scaler):
@@ -53,11 +111,7 @@ def prediksi_lstm(data_series, model, scaler):
 def generate_keterangan(row):
     penjelasan = []
     hasil = row['Peluang Pertumbuhan']
-    rh = row['RH_avg']
-    tavg = row['Tavg']
-    rr = row['RR']
-    ss = row['ss']
-
+    rh, tavg, rr, ss = row['RH_avg'], row['Tavg'], row['RR'], row['ss']
     rh_min, rh_max = ideal_ranges['RH_avg']
     tavg_min, tavg_max = ideal_ranges['Tavg']
     rr_min, rr_max = ideal_ranges['RR']
@@ -65,57 +119,53 @@ def generate_keterangan(row):
 
     if hasil == 'Baik':
         if rh_min <= rh <= rh_max:
-            penjelasan.append("Kelembapan baik, karena berada dalam kisaran optimal (50–85%).")
+            penjelasan.append("Kelembapan udara baik, karena berada dalam kisaran optimal.")
         if tavg_min <= tavg <= tavg_max:
-            penjelasan.append("Suhu baik, karena berada dalam kisaran optimal (25–30°C).")
+            penjelasan.append("Suhu udara baik, karena berada dalam kisaran optimal.")
         if rr_min <= rr <= rr_max:
-            penjelasan.append("Curah hujan baik, karena memadai dalam batas ideal (2,6–8 mm).")
+            penjelasan.append("Curah hujan baik, karena berada dalam kisaran optimal.")
         if ss_min <= ss <= ss_max:
-            penjelasan.append("Penyinaran baik, karena cukup lama dan mendukung fotosintesis (6–8 jam).")
+            penjelasan.append("Penyinaran matahari baik, karena berada dalam kisaran optimal.")
     else:
         if rh < rh_min:
-            penjelasan.append("Kelembapan buruk, karena terlalu rendah dari batas ideal.")
+            penjelasan.append("Kelembapan buruk, karena terlalu rendah dari kisaran optimal (akar bisa mengering dan menghambat penyerapan nutrisi).")
         elif rh > rh_max:
-            penjelasan.append("Kelembapan buruk, karena melebihi batas ideal dan dapat mengganggu pertumbuhan.")
+            penjelasan.append("Kelembapan buruk, karena melebihi kisaran optimal (akar rentan membusuk akibat tanah terlalu lembap).")
+
         if tavg < tavg_min:
-            penjelasan.append("Suhu buruk, karena terlalu rendah dari kisaran optimal.")
+            penjelasan.append("Suhu buruk, karena terlalu rendah dari kisaran optimal (pertumbuhan melambat dan buah sulit berkembang).")
         elif tavg > tavg_max:
-            penjelasan.append("Suhu buruk, karena terlalu tinggi dari kisaran optimal.")
+            penjelasan.append("Suhu buruk, karena melebihi kisaran optimal (daun bisa layu dan tanaman mengalami stres panas).")
+
         if rr < rr_min:
-            penjelasan.append("Curah hujan buruk, karena terlalu rendah dan berisiko kekeringan.")
+            penjelasan.append("Curah hujan buruk, karena terlalu rendah dari kisaran optimal (tanaman kekurangan air, berisiko layu).")
         elif rr > rr_max:
-            penjelasan.append("Curah hujan buruk, karena terlalu tinggi dan bisa menyebabkan kelebihan air.")
+            penjelasan.append("Curah hujan buruk, karena melebihi kisaran optimal (risiko jamur meningkat dan akar bisa membusuk).")
+
         if ss < ss_min:
-            penjelasan.append("Penyinaran buruk, karena terlalu singkat untuk fotosintesis optimal.")
+            penjelasan.append("Penyinaran buruk, karena terlalu singkat (fotosintesis terganggu, pertumbuhan terhambat).")
         elif ss > ss_max:
-            penjelasan.append("Penyinaran buruk, karena terlalu lama dan bisa menyebabkan stres cahaya.")
+            penjelasan.append("Penyinaran buruk, karena terlalu lama (tanaman bisa stres cahaya dan daun mengering).")
 
-    if not penjelasan:
-        penjelasan.append("Kondisi cuaca tidak memenuhi kategori ideal maupun ekstrem.")
-
-    return penjelasan
-
+    return penjelasan if penjelasan else ["Kondisi cuaca tidak memenuhi kategori ideal maupun ekstrem."]
 # Prediksi hari ini
-def get_prediksi_klasifikasi_hari_ini(df_bersih):
+def get_prediksi_klasifikasi_hari_ini(df_bersih, last_date):
     model_rh, model_tavg, model_rr, model_ss, model_rf, \
     scaler_rh, scaler_tavg, scaler_rr, scaler_ss = load_model_aktif()
 
     df_bersih['Tanggal'] = pd.to_datetime(df_bersih['Tanggal'])
-    df_bersih = df_bersih[df_bersih['Tanggal'] < pd.to_datetime(date.today())]
+    df_bersih = df_bersih[df_bersih['Tanggal'] <= pd.to_datetime(last_date)]
     df_bersih = df_bersih.sort_values('Tanggal')
 
-      # ✅ TARUH DI SINI:
     if df_bersih['RH_avg'].mean() < 50 and df_bersih['Tavg'].mean() > 50:
-        print(">>> Kolom RH_avg dan Tavg tertukar, akan dibalik...")
         temp = df_bersih['RH_avg'].copy()
         df_bersih['RH_avg'] = df_bersih['Tavg']
         df_bersih['Tavg'] = temp
 
-    # Tambahkan smoothing rolling 7 hari
     df_bersih['RH_avg'] = df_bersih['RH_avg'].rolling(window=7, center=True, min_periods=1).mean()
     df_bersih['Tavg'] = df_bersih['Tavg'].rolling(window=7, center=True, min_periods=1).mean()
-    df_bersih['RR']    = df_bersih['RR'].rolling(window=7, center=True, min_periods=1).mean()
-    df_bersih['ss']    = df_bersih['ss'].rolling(window=7, center=True, min_periods=1).mean()
+    df_bersih['RR'] = df_bersih['RR'].rolling(window=7, center=True, min_periods=1).mean()
+    df_bersih['ss'] = df_bersih['ss'].rolling(window=7, center=True, min_periods=1).mean()
 
     # print("===== 30 DATA RH_avg TERAKHIR YANG MASUK KE MODEL =====")
     # print(df_bersih['RH_avg'][-30:].values)
@@ -162,18 +212,14 @@ def get_prediksi_klasifikasi_hari_ini(df_bersih):
     # print(">>> SS Scaled     :", ss_scaled)
     # print(">>> SS Final      :", ss)
 
-
     df_pred = pd.DataFrame([[rh, tavg, rr, ss]], columns=['RH_avg', 'Tavg', 'RR', 'ss'])
     hasil_klasifikasi = model_rf.predict(df_pred)[0]
 
-    row = {
-        'RH_avg': rh, 'Tavg': tavg, 'RR': rr, 'ss': ss,
-        'Peluang Pertumbuhan': hasil_klasifikasi
-    }
+    row = {'RH_avg': rh, 'Tavg': tavg, 'RR': rr, 'ss': ss, 'Peluang Pertumbuhan': hasil_klasifikasi}
     keterangan = generate_keterangan(row)
 
     return {
-        'tanggal': str(date.today()),
+        'tanggal': str(last_date + timedelta(days=1)),
         'RH_avg': round(rh, 2),
         'Tavg': round(tavg, 2),
         'RR': round(rr, 2),
@@ -206,70 +252,81 @@ def get_prediksi_7_hari(df_bersih, last_date):
     df_bersih['Tanggal'] = pd.to_datetime(df_bersih['Tanggal'])
     df_bersih = df_bersih.sort_values('Tanggal')
 
-    # ✅ TARUH DI SINI:
     if df_bersih['RH_avg'].mean() < 50 and df_bersih['Tavg'].mean() > 50:
-        print(">>> Kolom RH_avg dan Tavg tertukar, akan dibalik...")
-        temp = df_bersih['RH_avg'].copy()
-        df_bersih['RH_avg'] = df_bersih['Tavg']
-        df_bersih['Tavg'] = temp
+        df_bersih['RH_avg'], df_bersih['Tavg'] = df_bersih['Tavg'], df_bersih['RH_avg']
 
-    # Terapkan rolling smoothing window=7
+    # ========== PISAHKAN DATA UNTUK HARI INI ==========
+    from model.get_prediksi_klasifikasi import get_prediksi_klasifikasi_hari_ini
+    df_hari_ini = df_bersih.copy()  # salin sebelum rolling
+    hari_ini_result = get_prediksi_klasifikasi_hari_ini(df_hari_ini, last_date)
+
+    # ========== ROLLING SETELAHNYA (untuk hari 2-7) ==========
     df_bersih['RH_avg'] = df_bersih['RH_avg'].rolling(window=7, center=True, min_periods=1).mean()
     df_bersih['Tavg'] = df_bersih['Tavg'].rolling(window=7, center=True, min_periods=1).mean()
-    df_bersih['RR'] = df_bersih['RR'].rolling(window=7, center=True, min_periods=1).mean()
-    df_bersih['ss'] = df_bersih['ss'].rolling(window=7, center=True, min_periods=1).mean()
+    df_bersih['RR']    = df_bersih['RR'].rolling(window=7, center=True, min_periods=1).mean()
+    df_bersih['ss']    = df_bersih['ss'].rolling(window=7, center=True, min_periods=1).mean()
 
     if len(df_bersih) < 30:
-        raise ValueError("Data tidak cukup untuk prediksi 7 hari ke depan!")
+        raise ValueError("Data tidak cukup untuk prediksi!")
 
-    # Ambil 30 data terakhir sebelum last_date
     df_hist = df_bersih[df_bersih['Tanggal'] <= pd.to_datetime(last_date)]
-    if len(df_hist) < 30:
-        raise ValueError("Data historis sebelum tanggal terakhir tidak mencukupi 30 hari!")
 
+    # ========== MASUKKAN HASIL HARI PERTAMA ==========
+    rh1 = hari_ini_result['RH_avg']
+    tavg1 = hari_ini_result['Tavg']
+    rr1 = hari_ini_result['RR']
+    ss1 = hari_ini_result['ss']
+    klasifikasi1 = hari_ini_result['klasifikasi']
+    ket1 = hari_ini_result['keterangan']
+    tgl1 = pd.to_datetime(hari_ini_result['tanggal'])
+
+    hasil_list.append({
+        'hari': ubah_ke_hari_indo(tgl1.strftime('%A')),
+        'tanggal': f"{tgl1.day:02d} {ubah_ke_bulan_indo(tgl1.month)} {tgl1.year}",
+        'RH_avg': rh1, 'Tavg': tavg1, 'RR': rr1, 'ss': ss1,
+        'klasifikasi': klasifikasi1,
+        'keterangan': ket1
+    })
+
+    # ========== SIAPKAN INPUT UNTUK HARI 2-7 ==========
     rh_seq = scaler_rh.transform(np.array(df_hist['RH_avg'][-30:]).reshape(-1, 1)).reshape(1, 30, 1)
     tavg_seq = scaler_tavg.transform(np.array(df_hist['Tavg'][-30:]).reshape(-1, 1)).reshape(1, 30, 1)
     rr_seq = scaler_rr.transform(np.array(df_hist['RR'][-30:]).reshape(-1, 1)).reshape(1, 30, 1)
     ss_seq = scaler_ss.transform(np.array(df_hist['ss'][-30:]).reshape(-1, 1)).reshape(1, 30, 1)
 
-    for i in range(1, 8):
-        rh_pred_scaled = model_rh.predict(rh_seq)[0][0]
-        tavg_pred_scaled = model_tavg.predict(tavg_seq)[0][0]
-        rr_pred_scaled = model_rr.predict(rr_seq)[0][0]
-        ss_pred_scaled = model_ss.predict(ss_seq)[0][0]
+    rh_seq = np.append(rh_seq[:, 1:, :], [[[scaler_rh.transform([[rh1]])[0][0]]]], axis=1)
+    tavg_seq = np.append(tavg_seq[:, 1:, :], [[[scaler_tavg.transform([[tavg1]])[0][0]]]], axis=1)
+    rr_seq = np.append(rr_seq[:, 1:, :], [[[scaler_rr.transform([[rr1]])[0][0]]]], axis=1)
+    ss_seq = np.append(ss_seq[:, 1:, :], [[[scaler_ss.transform([[ss1]])[0][0]]]], axis=1)
 
-        rh_seq = np.append(rh_seq[:, 1:, :], [[[rh_pred_scaled]]], axis=1)
-        tavg_seq = np.append(tavg_seq[:, 1:, :], [[[tavg_pred_scaled]]], axis=1)
-        rr_seq = np.append(rr_seq[:, 1:, :], [[[rr_pred_scaled]]], axis=1)
-        ss_seq = np.append(ss_seq[:, 1:, :], [[[ss_pred_scaled]]], axis=1)
+    # ========== LOOP HARI 2 SAMPAI 7 ==========
+    for i in range(2, 8):
+        rh_pred = model_rh.predict(rh_seq)[0][0]
+        tavg_pred = model_tavg.predict(tavg_seq)[0][0]
+        rr_pred = model_rr.predict(rr_seq)[0][0]
+        ss_pred = model_ss.predict(ss_seq)[0][0]
 
-        rh = float(scaler_rh.inverse_transform([[rh_pred_scaled]])[0][0])
-        tavg = float(scaler_tavg.inverse_transform([[tavg_pred_scaled]])[0][0])
-        rr = float(scaler_rr.inverse_transform([[rr_pred_scaled]])[0][0])
-        ss = float(scaler_ss.inverse_transform([[ss_pred_scaled]])[0][0])
+        rh_seq = np.append(rh_seq[:, 1:, :], [[[rh_pred]]], axis=1)
+        tavg_seq = np.append(tavg_seq[:, 1:, :], [[[tavg_pred]]], axis=1)
+        rr_seq = np.append(rr_seq[:, 1:, :], [[[rr_pred]]], axis=1)
+        ss_seq = np.append(ss_seq[:, 1:, :], [[[ss_pred]]], axis=1)
+
+        rh = float(scaler_rh.inverse_transform([[rh_pred]])[0][0])
+        tavg = float(scaler_tavg.inverse_transform([[tavg_pred]])[0][0])
+        rr = float(scaler_rr.inverse_transform([[rr_pred]])[0][0])
+        ss = float(scaler_ss.inverse_transform([[ss_pred]])[0][0])
 
         df_pred = pd.DataFrame([[rh, tavg, rr, ss]], columns=['RH_avg', 'Tavg', 'RR', 'ss'])
         klasifikasi = model_rf.predict(df_pred)[0]
-
-        row = {
-            'RH_avg': rh, 'Tavg': tavg, 'RR': rr, 'ss': ss,
-            'Peluang Pertumbuhan': klasifikasi
-        }
+        row = {'RH_avg': rh, 'Tavg': tavg, 'RR': rr, 'ss': ss, 'Peluang Pertumbuhan': klasifikasi}
         keterangan = generate_keterangan(row)
 
-        # ✅ Gunakan last_date yang dikirim sebagai acuan tanggal prediksi
-        tanggal_pred = last_date + timedelta(days=i)
-        hari = ubah_ke_hari_indo(tanggal_pred.strftime('%A'))
-        bulan = ubah_ke_bulan_indo(tanggal_pred.month)
-        tanggal_str = f"{tanggal_pred.day:02d} {bulan} {tanggal_pred.year}"
-
+        tgl_pred = last_date + timedelta(days=i)
         hasil_list.append({
-            'hari': hari,
-            'tanggal': tanggal_str,
-            'RH_avg': round(rh, 2),
-            'Tavg': round(tavg, 2),
-            'RR': round(rr, 2),
-            'ss': round(ss, 2),
+            'hari': ubah_ke_hari_indo(tgl_pred.strftime('%A')),
+            'tanggal': f"{tgl_pred.day:02d} {ubah_ke_bulan_indo(tgl_pred.month)} {tgl_pred.year}",
+            'RH_avg': round(rh, 2), 'Tavg': round(tavg, 2),
+            'RR': round(rr, 2), 'ss': round(ss, 2),
             'klasifikasi': klasifikasi,
             'keterangan': keterangan
         })

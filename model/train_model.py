@@ -4,12 +4,10 @@ import pandas as pd
 import mysql.connector
 from datetime import datetime
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import MinMaxScaler
 import joblib
-from keras.models import Sequential
-from keras.layers import LSTM, Dense
-from keras.losses import MeanSquaredError
-
+from keras.models import load_model
+import tensorflow as tf
+tf.config.run_functions_eagerly(True)
 
 # ====== Fungsi bantu ======
 def get_combined_data():
@@ -34,58 +32,99 @@ def get_next_model_folder():
     os.makedirs(folder, exist_ok=True)
     return folder
 
-def build_lstm_model(input_shape):
-    model = Sequential()
-    model.add(LSTM(64, input_shape=input_shape))
-    model.add(Dense(1))
-    model.compile(optimizer='adam', loss=MeanSquaredError())  
-    return model
-
-def prepare_lstm_data(data, feature):
-    scaler = MinMaxScaler()
-    scaled = scaler.fit_transform(data[[feature]])
+def prepare_lstm_data(data, feature, scaler_path):
+    scaler = joblib.load(scaler_path)  # Pakai scaler dari model_utama
+    data_clean = data[[feature]].dropna()
+    if len(data_clean) < 30:
+        raise ValueError(f"⚠️ Data {feature} terlalu sedikit setelah dropna: hanya {len(data_clean)}")
+    scaled = scaler.transform(data_clean)
     X, y = [], []
     for i in range(30, len(scaled)):
         X.append(scaled[i-30:i])
         y.append(scaled[i])
     return np.array(X), np.array(y), scaler
 
-# ====== Main training ======
-def train_and_save_all():
+# ====== Main Training ======
+def train_and_save_all(fine_tune=True):
     df = get_combined_data()
     df = df.sort_values('Tanggal')
 
+    # Rolling smoothing 7 hari
+    for col in ['RH_avg', 'Tavg', 'RR', 'ss']:
+        df[col] = df[col].rolling(window=7, center=True, min_periods=1).mean()
+        print(f"📊 Data valid {col} setelah rolling:", df[col].dropna().shape[0])
+
     folder = get_next_model_folder()
-    print("🔁 Retrain model dan simpan ke:", folder)
+    print("🔁 Fine-tuning dari model_utama dan simpan ke:", folder)
 
-    # Fitur LSTM
-    lstm_features = ['RH_avg', 'Tavg', 'RR', 'ss']
-    for fitur in lstm_features:
-        X, y, scaler = prepare_lstm_data(df, fitur)
-        model = build_lstm_model((X.shape[1], X.shape[2]))
-        model.fit(X, y, epochs=10, verbose=0)
-        model.save(os.path.join(folder, f"{fitur.lower()}_model.h5"))
-        joblib.dump(scaler, os.path.join(folder, f"scaler_{fitur.lower()}.pkl"))
-        print(f"✅ {fitur} LSTM model & scaler disimpan.")
+    # Konfigurasi spesifik per fitur
+    epoch_dict = {
+        'RH_avg': 10,
+        'Tavg': 10,
+        'RR': 10,
+        'ss': 10
+    }
 
-    # Klasifikasi RF
-    X_rf = df[['RH_avg', 'Tavg', 'RR', 'ss']]
-    y_rf = df['Label'] if 'Label' in df.columns else (np.random.choice(['Baik', 'Buruk'], len(X_rf)))  # dummy
-    rf_model = RandomForestClassifier()
-    rf_model.fit(X_rf, y_rf)
-    joblib.dump(rf_model, os.path.join(folder, "rf_model.pkl"))
-    print("✅ Random Forest klasifikasi disimpan.")
+    batch_dict = {
+        'RH_avg': 32,
+        'Tavg': 32,
+        'RR': 32,
+        'ss': 32
+    }
 
-    # Simpan tanggal retrain
+    fitur_list = ['RH_avg', 'Tavg', 'RR', 'ss']
+    for fitur in fitur_list:
+        fitur_lower = fitur.lower()
+        path_model_utama = f"model/model_utama/{fitur_lower}_model.h5"
+        path_scaler_utama = f"model/model_utama/scaler_{fitur_lower}.pkl"
+
+        if fine_tune and os.path.exists(path_model_utama) and os.path.exists(path_scaler_utama):
+            model = load_model(path_model_utama, compile=False)
+            model.compile(optimizer='adam', loss='mse')
+            print(f"🔧 Fine-tune model {fitur} dari model_utama")
+        else:
+            print(f"⚠️ File model_utama {fitur_lower} tidak ditemukan! Gagal retrain.")
+            continue
+
+        try:
+            X, y, scaler = prepare_lstm_data(df, fitur, path_scaler_utama)
+            model.fit(
+            X, y,
+            epochs=epoch_dict[fitur],
+            batch_size=batch_dict[fitur],
+            verbose=1,
+            shuffle=False
+            )
+            
+            model.save(os.path.join(folder, f"{fitur_lower}_model.h5"))
+            joblib.dump(scaler, os.path.join(folder, f"scaler_{fitur_lower}.pkl"))
+            print(f"✅ {fitur} retrain selesai dan disimpan.")
+        except Exception as e:
+            print(f"❌ Gagal retrain {fitur}: {e}")
+            continue
+
+    # Random Forest
+    try:
+        X_rf = df[['RH_avg', 'Tavg', 'RR', 'ss']].dropna()
+        y_rf = df['Label'] if 'Label' in df.columns else (
+            np.random.choice(['Baik', 'Buruk'], len(X_rf))
+        )
+        rf_model = RandomForestClassifier()
+        rf_model.fit(X_rf, y_rf)
+        joblib.dump(rf_model, os.path.join(folder, "rf_model.pkl"))
+        print("✅ Random Forest klasifikasi disimpan.")
+    except Exception as e:
+        print(f"❌ Gagal retrain RandomForest: {e}")
+
+    # Simpan metadata retrain
     with open(os.path.join(folder, "tanggal_retrain.txt"), 'w') as f:
         f.write(datetime.now().strftime("%Y-%m-%d"))
 
-    # Jadikan model ini aktif
     with open("model/model_aktif.txt", 'w') as f:
-        f.write(folder.replace("\\", "/"))  # konsisten path
+        f.write(folder.replace("\\", "/"))
 
-    print("🎉 Retrain selesai! Model ini otomatis menjadi aktif.")
+    print("🎉 Retrain selesai. Model ini sekarang menjadi aktif:", folder)
 
-# Jalankan saat file ini dieksekusi langsung
+# Jalankan langsung
 if __name__ == "__main__":
-    train_and_save_all()
+    train_and_save_all(fine_tune=True)
