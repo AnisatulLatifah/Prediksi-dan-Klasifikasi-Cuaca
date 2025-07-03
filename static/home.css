@@ -314,3 +314,78 @@ h3.buruk {
     flex: none;
   }
 }
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Tombol Scroll */
+.scroll-btn {
+  display: inline-block;
+  background-color:rgba(234, 252, 231, 0.5);
+  color: white;
+  padding: 0.5rem 1rem;
+  font-size: 0.7rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: background 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.scroll-btn:hover {
+  background-color: rgba(198, 254, 190, 0.5);
+  transform: scale(1);
+}
+
+/* Section Acuan (full width background) */
+#acuan {
+  background-color: #e4f7e2;
+  padding: 3rem 1rem;
+  margin-top: 4rem;
+  width: 100vw;
+  box-sizing: border-box;
+}
+
+.acuan-title {
+  text-align: center;
+  font-size: 1.6rem;
+  font-weight: bold;
+  color: #14532d;
+  margin-bottom: 2rem;
+}
+
+.acuan-table-wrapper {
+  max-width: 700px;
+  margin: 0 auto;
+  background-color: white;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.acuan-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.acuan-table th,
+.acuan-table td {
+  border: 1px solid #d1fae5;
+  padding: 0.8rem 1rem;
+  text-align: left;
+}
+
+.acuan-table thead {
+  background-color: #bbf7d0;
+  color: #064e3b;
+}
+
+.acuan-source {
+  font-size: 0.75rem;
+  text-align: center;
+  color: #6b7280;
+  font-style: italic;
+  margin-top: 1.5rem;
+}

@@ -50,13 +50,7 @@ def is_model_utama():
 
 # Fungsi untuk membaca model aktif yang dipilih pengguna
 def load_model_aktif():
-    file_path = 'model/model_aktif.txt'
-    if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
-        with open(file_path, 'w') as f:
-            f.write('model/model_utama')
-
-    with open(file_path, 'r') as f:
-        path = f.read().strip()
+    path = 'model/model_utama'
 
     if not os.path.exists(path):
         raise FileNotFoundError(f"Folder model tidak ditemukan: {path}")
@@ -148,6 +142,7 @@ def generate_keterangan(row):
             penjelasan.append("Penyinaran buruk, karena terlalu lama (tanaman bisa stres cahaya dan daun mengering).")
 
     return penjelasan if penjelasan else ["Kondisi cuaca tidak memenuhi kategori ideal maupun ekstrem."]
+
 # Prediksi hari ini
 def get_prediksi_klasifikasi_hari_ini(df_bersih, last_date):
     model_rh, model_tavg, model_rr, model_ss, model_rf, \
@@ -162,22 +157,12 @@ def get_prediksi_klasifikasi_hari_ini(df_bersih, last_date):
         df_bersih['RH_avg'] = df_bersih['Tavg']
         df_bersih['Tavg'] = temp
 
+    # ========== PREPROCESSING SEBELUM PREDIKSI HARI INI ==========
     df_bersih['RH_avg'] = df_bersih['RH_avg'].rolling(window=7, center=True, min_periods=1).mean()
     df_bersih['Tavg'] = df_bersih['Tavg'].rolling(window=7, center=True, min_periods=1).mean()
+    df_bersih['RR'] = np.log1p(df_bersih['RR'])  
     df_bersih['RR'] = df_bersih['RR'].rolling(window=7, center=True, min_periods=1).mean()
     df_bersih['ss'] = df_bersih['ss'].rolling(window=7, center=True, min_periods=1).mean()
-
-    # print("===== 30 DATA RH_avg TERAKHIR YANG MASUK KE MODEL =====")
-    # print(df_bersih['RH_avg'][-30:].values)
-
-    # print("===== 30 DATA TAVG TERAKHIR YANG MASUK KE MODEL =====")
-    # print(df_bersih['Tavg'][-30:].values)
-
-    # print("===== 30 DATA RR TERAKHIR YANG MASUK KE MODEL =====")
-    # print(df_bersih['RR'][-30:].values)
-
-    # print("===== 30 DATA SS TERAKHIR YANG MASUK KE MODEL =====")
-    # print(df_bersih['ss'][-30:].values)
 
 
     if len(df_bersih) < 30:
@@ -185,33 +170,11 @@ def get_prediksi_klasifikasi_hari_ini(df_bersih, last_date):
 
     rh = prediksi_lstm(df_bersih['RH_avg'], model_rh, scaler_rh)
     tavg = prediksi_lstm(df_bersih['Tavg'], model_tavg, scaler_tavg)
-    rr = prediksi_lstm(df_bersih['RR'], model_rr, scaler_rr)
+    rr_log = prediksi_lstm(df_bersih['RR'], model_rr, scaler_rr)
+    rr = np.expm1(rr_log)
     ss = prediksi_lstm(df_bersih['ss'], model_ss, scaler_ss)
 
-    # # ====== Prediksi RH_avg ======
-    # rh_scaled = model_rh.predict(scaler_rh.transform(np.array(df_bersih['RH_avg'][-30:]).reshape(-1, 1)).reshape(1, 30, 1))
-    # rh = scaler_rh.inverse_transform(rh_scaled.reshape(-1, 1))[0][0]
-    # print(">>> RH_avg Scaled :", rh_scaled)
-    # print(">>> RH_avg Final  :", rh)
-
-    # # ====== Prediksi Tavg ======
-    # tavg_scaled = model_tavg.predict(scaler_tavg.transform(np.array(df_bersih['Tavg'][-30:]).reshape(-1, 1)).reshape(1, 30, 1))
-    # tavg = scaler_tavg.inverse_transform(tavg_scaled.reshape(-1, 1))[0][0]
-    # print(">>> Tavg Scaled   :", tavg_scaled)
-    # print(">>> Tavg Final    :", tavg)
-
-    # # ====== Prediksi RR ======
-    # rr_scaled = model_rr.predict(scaler_rr.transform(np.array(df_bersih['RR'][-30:]).reshape(-1, 1)).reshape(1, 30, 1))
-    # rr = scaler_rr.inverse_transform(rr_scaled.reshape(-1, 1))[0][0]
-    # print(">>> RR Scaled     :", rr_scaled)
-    # print(">>> RR Final      :", rr)
-
-    # # ====== Prediksi SS ======
-    # ss_scaled = model_ss.predict(scaler_ss.transform(np.array(df_bersih['ss'][-30:]).reshape(-1, 1)).reshape(1, 30, 1))
-    # ss = scaler_ss.inverse_transform(ss_scaled.reshape(-1, 1))[0][0]
-    # print(">>> SS Scaled     :", ss_scaled)
-    # print(">>> SS Final      :", ss)
-
+    # ========== PROSES KLASIFIKASI ==========
     df_pred = pd.DataFrame([[rh, tavg, rr, ss]], columns=['RH_avg', 'Tavg', 'RR', 'ss'])
     hasil_klasifikasi = model_rf.predict(df_pred)[0]
 
@@ -256,13 +219,13 @@ def get_prediksi_7_hari(df_bersih, last_date):
         df_bersih['RH_avg'], df_bersih['Tavg'] = df_bersih['Tavg'], df_bersih['RH_avg']
 
     # ========== PISAHKAN DATA UNTUK HARI INI ==========
-    from model.get_prediksi_klasifikasi import get_prediksi_klasifikasi_hari_ini
     df_hari_ini = df_bersih.copy()  # salin sebelum rolling
     hari_ini_result = get_prediksi_klasifikasi_hari_ini(df_hari_ini, last_date)
 
     # ========== ROLLING SETELAHNYA (untuk hari 2-7) ==========
     df_bersih['RH_avg'] = df_bersih['RH_avg'].rolling(window=7, center=True, min_periods=1).mean()
     df_bersih['Tavg'] = df_bersih['Tavg'].rolling(window=7, center=True, min_periods=1).mean()
+    df_bersih['RR'] = np.log1p(df_bersih['RR'])
     df_bersih['RR']    = df_bersih['RR'].rolling(window=7, center=True, min_periods=1).mean()
     df_bersih['ss']    = df_bersih['ss'].rolling(window=7, center=True, min_periods=1).mean()
 
@@ -288,7 +251,7 @@ def get_prediksi_7_hari(df_bersih, last_date):
         'keterangan': ket1
     })
 
-    # ========== SIAPKAN INPUT UNTUK HARI 2-7 ==========
+    # ========== SIAPKAN INPUT UNTUK HARI 2-7 (RECURSIVE)==========
     rh_seq = scaler_rh.transform(np.array(df_hist['RH_avg'][-30:]).reshape(-1, 1)).reshape(1, 30, 1)
     tavg_seq = scaler_tavg.transform(np.array(df_hist['Tavg'][-30:]).reshape(-1, 1)).reshape(1, 30, 1)
     rr_seq = scaler_rr.transform(np.array(df_hist['RR'][-30:]).reshape(-1, 1)).reshape(1, 30, 1)

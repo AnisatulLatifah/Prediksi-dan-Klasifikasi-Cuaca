@@ -19,14 +19,12 @@
     <a href="{{ url_for('input') }}"><img src="{{ url_for('static', filename='images/icon_input.png') }}" class="icon-menu"> Input Data</a>
     <a href="{{ url_for('prediksi') }}"><img src="{{ url_for('static', filename='images/icon_prediksi.png') }}" class="icon-menu"> Lihat Prediksi</a>
     <a href="{{ url_for('download') }}"><img src="{{ url_for('static', filename='images/icon_download.png') }}" class="icon-menu"> Download</a>
-    <a href="{{ url_for('latihmodel') }}"><img src="{{ url_for('static', filename='images/icon_latihmodel.png') }}" class="icon-menu"> Pelatihan Data</a>
   </div>
 
   <!-- Logo -->
   <div class="logo-container">
     <img src="{{ url_for('static', filename='images/logo_website.png') }}" class="logo" alt="Logo Website">
   </div>
-
 
   <!-- Konten -->
   <div class="container">
@@ -36,15 +34,15 @@
       <h1>Cuaca Terkini untuk Pertumbuhan</h1>
       <h2>Jeruk yang Optimal</h2>
       <p>Prakiraan cuaca di kota Malang, Jawa Timur, Indonesia</p>
-       <!-- Kontainer tombol prediksi (di atas box-hari-ini) -->
     </div>
-  
-    <!-- Box Prediksi Hari Ini -->
+
+    <!-- Tombol Prediksi 7 Hari -->
     <div class="btn-prediksi-container-float">
       <a href="{{ url_for('prediksi') }}" class="btn-prediksi">Lihat Prediksi 7 Hari Kedepan</a>
     </div>
+
+    <!-- Box Prediksi Hari Ini -->
     <div class="box-hari-ini">
-      
       <!-- Kolom Tanggal -->
       <div class="kolom hari-ini">
         <p>Hari ini</p>
@@ -54,7 +52,6 @@
           Prediksi ini dihitung menggunakan data historis hingga <strong>{{ last_data_str }}</strong>
         </small>
       </div>
-
 
       <!-- Kolom Keterangan dan Gambar -->
       <div class="kolom tengah">
@@ -112,9 +109,35 @@
           </div>
         </div>
       </div>
-
     </div>
   </div>
+
+  <!-- TOMBOL SCROLL KE BAWAH -->
+  <div style="text-align: center; margin-top: 2rem;">
+    <a href="#acuan" class="scroll-btn">⬇️ Lihat Acuan Standarisasi</a>
+  </div>
+
+  <!-- SECTION ACUAN -->
+  <section id="acuan" class="acuan-container">
+    <h2 class="acuan-title">Standar Kebutuhan Cuaca Harian untuk Pertumbuhan Jeruk yang Optimal</h2>
+    <div class="acuan-table-wrapper">
+      <table class="acuan-table">
+        <thead>
+          <tr>
+            <th>Parameter</th>
+            <th>Rentang Nilai</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Temperatur Udara</td><td>25–30°C</td></tr>
+          <tr><td>Kelembapan Udara</td><td>50–85%</td></tr>
+          <tr><td>Lama Penyinaran</td><td>6–8 Jam</td></tr>
+          <tr><td>Curah Hujan</td><td>2.6–8 mm</td></tr>
+        </tbody>
+      </table>
+      <p class="acuan-source">Sumber: Balai Penelitian Tanaman Jeruk dan Subtropika (2019)</p>
+    </div>
+  </section>
 
   <!-- Toggle Sidebar Script -->
   <script>
@@ -122,5 +145,6 @@
       document.getElementById('sidebar').classList.toggle('active');
     }
   </script>
+
 </body>
 </html>

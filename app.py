@@ -6,23 +6,17 @@ import os
 import sys
 import pdfkit
 from werkzeug.utils import secure_filename
-from model.train_model import train_and_save_all
 from model.get_prediksi_klasifikasi import get_prediksi_7_hari
-from flask import Flask, render_template, send_file
 import os
 from io import BytesIO
-from data_dummy import generate_dummy_data
 from jinja2 import Environment, FileSystemLoader
+from model.get_prediksi_klasifikasi import get_prediksi_klasifikasi_hari_ini
 
 # utils
 sys.path.append('utils')
 from utils.export_excel_template import isi_template_excel
 
 
-from model.get_prediksi_klasifikasi import (
-    get_prediksi_klasifikasi_hari_ini,
-    get_prediksi_7_hari
-)
 from model.preprocessing_data_cuacabmkg import bersihkan_data
 
 app = Flask(__name__)
@@ -45,115 +39,77 @@ db = mysql.connector.connect(
 )
 cursor = db.cursor()
 
-def get_last_data_date_by_model(path_model):
-    if 'model_utama' in path_model:
-        table = 'cuaca_lama'
-    else:
-        table = 'cuaca_input_user'
-
-    conn = mysql.connector.connect(
-        host='localhost',
-        user='root',
-        password='',
-        database='cuaca_db'
-    )
+def get_last_data_date():
+    conn = mysql.connector.connect(host='localhost', user='root', password='', database='cuaca_db')
     cursor = conn.cursor()
-    cursor.execute(f"SELECT MAX(tanggal) FROM {table}")
-    result = cursor.fetchone()[0]
+    cursor.execute("SELECT MAX(tanggal) FROM cuaca_input_user")
+    result_input = cursor.fetchone()[0]
+    if result_input:
+        conn.close()
+        return pd.to_datetime(result_input)
+    cursor.execute("SELECT MAX(tanggal) FROM cuaca_lama")
+    result_lama = cursor.fetchone()[0]
     conn.close()
-
-    return pd.to_datetime(result)
+    return pd.to_datetime(result_lama)
 
 # ====== HALAMAN HOME ======
 @app.route('/')
 def home():
-    from datetime import date, timedelta
     import locale
-
-    # Set locale ke Bahasa Indonesia (pastikan sistem mendukung)
     try:
-        locale.setlocale(locale.LC_TIME, 'id_ID.UTF-8')  # Linux/macOS
+        locale.setlocale(locale.LC_TIME, 'id_ID.UTF-8')
     except:
         try:
-            locale.setlocale(locale.LC_TIME, 'ind')  # Windows
+            locale.setlocale(locale.LC_TIME, 'ind')
         except:
-            pass  # Lewatkan jika locale tidak tersedia
+            pass
 
-    # Ambil model yang sedang aktif
-    with open("model/model_aktif.txt", "r") as f:
-        path_model = f.read().strip()
+    # Ambil data dari database langsung
+    conn = mysql.connector.connect(host='localhost', user='root', password='', database='cuaca_db')
+    df_lama = pd.read_sql("SELECT * FROM cuaca_lama", conn)
+    df_user = pd.read_sql("SELECT * FROM cuaca_input_user", conn)
+    conn.close()
 
-    # Ambil tanggal terakhir sesuai sumber data model
-    def get_last_data_date_by_model(path_model):
-        if 'model_utama' in path_model:
-            table = 'cuaca_lama'
-        else:
-            table = 'cuaca_input_user'
+    # Gabungkan dan urutkan
+    df_bersih = pd.concat([df_lama, df_user], ignore_index=True)
+    df_bersih['Tanggal'] = pd.to_datetime(df_bersih['Tanggal'])
+    df_bersih = df_bersih.sort_values('Tanggal')
 
-        conn = mysql.connector.connect(
-            host='localhost',
-            user='root',
-            password='',
-            database='cuaca_db'
-        )
-        cursor = conn.cursor()
-        cursor.execute(f"SELECT MAX(tanggal) FROM {table}")
-        result = cursor.fetchone()[0]
-        conn.close()
-
-        if result is None:
-            return None
-        return pd.to_datetime(result)
-
-    # Tangani jika last_date None
-    last_date = get_last_data_date_by_model(path_model)
-    if last_date is None:
-        last_date = date.today()
-
+    # Ambil tanggal terakhir
+    last_date = df_bersih['Tanggal'].max()
     prediksi_date = last_date + timedelta(days=1)
 
-    # Ambil data untuk model
-    conn = mysql.connector.connect(
-        host='localhost',
-        user='root',
-        password='',
-        database='cuaca_db'
-    )
-    query = "SELECT * FROM cuaca_lama ORDER BY tanggal ASC"
-    df_bersih = pd.read_sql(query, conn)
-    conn.close()
-    df_bersih['Tanggal'] = pd.to_datetime(df_bersih['Tanggal'])
-
-    # Prediksi hari ini
+    # Jalankan prediksi hari ini
     hasil = get_prediksi_klasifikasi_hari_ini(df_bersih, last_date)
 
-    # Gunakan hari dan bulan langsung dari locale Indonesia
-    hari = prediksi_date.strftime('%A')  # e.g., "Rabu"
-    bulan = prediksi_date.strftime('%B')  # e.g., "Mei"
+    hari = prediksi_date.strftime('%A')
+    bulan = prediksi_date.strftime('%B')
     tanggal_indo = f"{prediksi_date.day:02d} {bulan} {prediksi_date.year}"
+    last_data_str = f"{last_date.day:02d} {bulan} {last_date.year}"
 
-    last_data_str = f"{last_date.day:02d} {last_date.strftime('%B')} {last_date.year}"
-
-    return render_template('home.html',
-                           hasil=hasil,
-                           hari=hari,
-                           tanggal=tanggal_indo,
-                           last_data_str=last_data_str)
+    return render_template(
+        'home.html',
+        hasil=hasil,
+        hari=hari,
+        tanggal=tanggal_indo,
+        last_data_str=last_data_str
+    )
 
 # ====== HALAMAN PREDIKSI ======
 @app.route('/prediksi')
 def prediksi():
-    from datetime import date
-    import pandas as pd
-    from model.get_prediksi_klasifikasi import (
-        get_prediksi_7_hari,
-        get_df_bersih_by_model,
-        get_last_date_by_model
-    )
 
     # Ambil data & last_date sesuai model aktif
-    df_bersih = get_df_bersih_by_model()
-    last_data_date = get_last_date_by_model()
+    conn = mysql.connector.connect(host='localhost', user='root', password='', database='cuaca_db')
+    df_lama = pd.read_sql("SELECT * FROM cuaca_lama", conn)
+    df_input = pd.read_sql("SELECT * FROM cuaca_input_user", conn)
+    conn.close()
+
+    df_bersih = pd.concat([df_lama, df_input], ignore_index=True)
+    df_bersih['Tanggal'] = pd.to_datetime(df_bersih['Tanggal'])
+    df_bersih = df_bersih.sort_values('Tanggal')
+
+    last_data_date = df_bersih['Tanggal'].max()
 
     hasil_7hari = get_prediksi_7_hari(df_bersih, last_data_date)
 
@@ -271,7 +227,6 @@ def submit_input():
             flash(f"❌ Gagal simpan {tanggal.date()}: {e}", "danger")
 
     db.commit()
-    train_and_save_all()
     return render_template('input.html')  
 
 
@@ -347,13 +302,13 @@ def upload_csv():
                 ))
 
             db.commit()
-            train_and_save_all()
-            flash("✅ CSV berhasil disimpan dan model berhasil dilatih!", "success")
+            flash("✅ Data CSV berhasil diunggah dan disimpan.", "success")
             return redirect(url_for('input'))
 
         except Exception as e:
             flash(f"Gagal memproses file CSV: {e}", "danger")
             return redirect(url_for('input'))
+
     else:
         flash("Format file tidak didukung. Harus .csv", "danger")
         return redirect(url_for('input'))
@@ -421,68 +376,50 @@ def buat_keterangan(row):
     deskripsi.append("</ul>")
     return '\n'.join(deskripsi)
 
-
 @app.route('/cetak-pdf')
 def cetak_pdf():
-    from jinja2 import Environment, FileSystemLoader
-    import os
-
-    # Ambil model aktif
-    with open("model/model_aktif.txt", "r") as f:
-        path_model = f.read().strip()
-
-    table = "cuaca_lama" if "model_utama" in path_model else "cuaca_input_user"
-
-    # Ambil tanggal terakhir dari tabel
     conn = mysql.connector.connect(host='localhost', user='root', password='', database='cuaca_db')
     cursor = conn.cursor()
-    cursor.execute(f"SELECT MAX(tanggal) FROM {table}")
-    last_date = cursor.fetchone()[0]
-    last_date = pd.to_datetime(last_date).date()
+    cursor.execute("SELECT MAX(tanggal) FROM cuaca_input_user")
+    result_input = cursor.fetchone()[0]
 
-    # Ambil dan gabungkan data dari dua tabel
+    if result_input:
+        last_date = pd.to_datetime(result_input).date()
+        table_used = "cuaca_input_user"
+    else:
+        cursor.execute("SELECT MAX(tanggal) FROM cuaca_lama")
+        last_date = pd.to_datetime(cursor.fetchone()[0]).date()
+        table_used = "cuaca_lama"
+
+    # Ambil data dari dua tabel
     df_lama = pd.read_sql("SELECT * FROM cuaca_lama", conn)
     df_input = pd.read_sql("SELECT * FROM cuaca_input_user", conn)
     conn.close()
 
-    if 'model_utama' in path_model:
-        df_bersih = df_lama.copy()
-    else:
-        df_bersih = pd.concat([df_lama, df_input], ignore_index=True)
-
+    df_bersih = pd.concat([df_lama, df_input], ignore_index=True)
     df_bersih['Tanggal'] = pd.to_datetime(df_bersih['Tanggal'])
     df_bersih = df_bersih.sort_values('Tanggal')
 
-
-    # Ambil hasil prediksi dari model
     hasil = get_prediksi_7_hari(df_bersih, last_date)
 
-    # Tambahkan kolom Klasifikasi agar bisa dirender di HTML
     for row in hasil:
         row["Klasifikasi"] = row.get("klasifikasi", "-")
 
-    # Deskripsi + periode
     periode = f"{hasil[0]['tanggal']} - {hasil[-1]['tanggal']}"
     deskripsi = [buat_keterangan(row) for row in hasil]
 
-    # ==== Ambil path absolut logo ====
     logo_path = os.path.abspath("static/images/logo_website.png").replace("\\", "/")
     logo_url = "file:///" + logo_path
 
-    # Render template
     env = Environment(loader=FileSystemLoader('templates'))
     template = env.get_template('report_template.html')
     html_out = template.render(data=hasil, periode=periode, deskripsi=deskripsi, logo_path=logo_url)
 
-    # Konfigurasi dan generate PDF
     config = pdfkit.configuration(wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe")
-    options = {
-    'enable-local-file-access': None 
-}
+    options = {'enable-local-file-access': None}
     pdf_bytes = pdfkit.from_string(html_out, False, configuration=config, options=options)
 
     return send_file(BytesIO(pdf_bytes), as_attachment=True, download_name="laporan_prediksi.pdf", mimetype='application/pdf')
-
 
 # ====== HALAMAN LATIH MODEL ======
 def get_last_date_from(table):
@@ -501,78 +438,6 @@ def get_last_date_from(table):
     if result is None:
         return "-"
     return pd.to_datetime(result).strftime('%Y-%m-%d')
-
-
-# ====== HALAMAN LATIH MODEL ======
-@app.route('/latihmodel', methods=['GET'])
-def latihmodel():
-    model_list = []
-
-    # === 1. Model utama
-    model_list.append({
-        "versi": 1,
-        "nama": "model utama",
-        "path": "model/model_utama",
-        "tgl_data": get_last_date_from("cuaca_lama"),
-        "tgl_retrain": "2025-05-01"
-    })
-
-    # === 2. Model retrain dari folder
-    retrain_dir = os.path.join("model", "model_retrain")
-    if os.path.exists(retrain_dir):
-        subdirs = sorted([d for d in os.listdir(retrain_dir) if os.path.isdir(os.path.join(retrain_dir, d))])
-        for i, folder in enumerate(subdirs):
-            folder_path = os.path.join(retrain_dir, folder).replace("\\", "/")
-            tanggal_retrain = "-"
-            tanggal_file = os.path.join(folder_path, "tanggal_retrain.txt")
-            if os.path.exists(tanggal_file):
-                with open(tanggal_file) as f:
-                    tanggal_retrain = f.read().strip()
-
-            model_list.append({
-                "versi": i + 2,
-                "nama": f"{folder}",
-                "path": folder_path,
-                "tgl_data": get_last_date_from("cuaca_input_user"),
-                "tgl_retrain": tanggal_retrain
-            })
-
-    # === 3. Tambahkan kolom datetime untuk pengurutan
-    for model in model_list:
-        try:
-            model["tgl_retrain_dt"] = pd.to_datetime(model["tgl_retrain"])
-        except:
-            model["tgl_retrain_dt"] = pd.Timestamp("1900-01-01")
-
-    model_list = sorted(model_list, key=lambda x: x["tgl_retrain_dt"], reverse=True)
-
-    # === 4. Ambil model aktif dari file model_aktif.txt
-    aktif_path = ""
-    model_aktif_file = os.path.join("model", "model_aktif.txt")
-    if os.path.exists(model_aktif_file):
-        with open(model_aktif_file) as f:
-            aktif_path = f.read().strip()
-
-    # === 5. Tandai model aktif
-    for model in model_list:
-        model["disabled"] = model["path"] != aktif_path
-
-    return render_template("latihmodel.html", models=model_list, aktif_path=aktif_path)
-
-
-# ====== TERAPKAN MODEL ======
-@app.route('/terapkan_model', methods=['POST'])
-def terapkan_model():
-    model_terpilih = request.form.get('model_terpilih')
-    if model_terpilih:
-        path_file = os.path.join("model", "model_aktif.txt")
-        with open(path_file, 'w') as f:
-            f.write(model_terpilih.strip())
-
-        model_name = model_terpilih.strip().split("/")[-1]
-        flash(f"Model '{model_name}' berhasil diterapkan. Silahkan lihat prediksi dan klasifikasinya di halaman home dan prediksi!", 'success')
-
-    return redirect(url_for('latihmodel'))
 
 
 # ====== JALANKAN FLASK ======
